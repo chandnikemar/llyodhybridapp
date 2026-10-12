@@ -693,10 +693,28 @@ class OrderManagementViewModel with ChangeNotifier {
 
       debugPrint('📥 [API RESPONSE] Vehicle Milestone Status Code: ${response?.statusCode}');
 
+      if (response != null && response.statusCode == 204) {
+        return true;
+      }
+
       if (response != null && response.statusCode == 200 && response.data != null) {
-        List<dynamic> data = response.data;
+        dynamic body = response.data;
+        if (body is String && body.trim().isNotEmpty) {
+          body = jsonDecode(body);
+        }
+        final List<dynamic> data;
+        if (body is List) {
+          data = body;
+        } else if (body is Map<String, dynamic> && body['data'] is List) {
+          data = body['data'] as List;
+        } else if (body is Map<String, dynamic>) {
+          data = [body];
+        } else {
+          data = const [];
+        }
         _vehicleMilestoneDetail = data
-            .map((json) => VehicleMilestoneResponse.fromJson(json))
+            .whereType<Map<String, dynamic>>()
+            .map(VehicleMilestoneResponse.fromJson)
             .toList();
 
         return true;
@@ -753,7 +771,10 @@ class OrderManagementViewModel with ChangeNotifier {
         return;
       }
 
-      final dynamic responseData = response.data;
+      dynamic responseData = response.data;
+    if (responseData is String && responseData.trim().isNotEmpty) {
+      responseData = jsonDecode(responseData);
+    }
 
       // 4. Parse the response into MilestonePlanResponseModel list
       if (responseData is List) {
