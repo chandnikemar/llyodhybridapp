@@ -1,4 +1,4 @@
-
+import '../../../utilities/json_parsers.dart';
 
 class MilestonePlanResponseModel {
   final int? jobMilestoneId;
@@ -63,37 +63,37 @@ class MilestonePlanResponseModel {
 
   factory MilestonePlanResponseModel.fromJson(Map<String, dynamic> json) {
     return MilestonePlanResponseModel(
-      jobMilestoneId: json['jobMilestoneId'],
-      elvId: json['elvId'],
-      vehicleTransactionId: json['vehicleTransactionId'],
-      milestoneTransactionCode: json['milestoneTransactionCode']?.toString(),
-      milestone: json['milestone']?.toString(),
-      milestoneCode: json['milestoneCode']?.toString(),
-      milestoneDescription: json['milestoneDescription']?.toString(),
-      milestioneEvent: json['milestioneEvent']?.toString(),
-      milestoneSequence: json['milestoneSequence'],
-      locationCode: json['locationCode']?.toString(),
-      locationName: json['locationName']?.toString(),
-      actualLane: json['actualLane']?.toString(),
-      expectedLane: json['expectedLane']?.toString(),
-      isRequiredMilestone: json['isRequiredMilestone'],
-      isActive: json['isActive'],
-      status: json['status']?.toString(),
-      remarks: json['remarks']?.toString(),
-      milestoneBeginTime: json['milestoneBeginTime']?.toString(),
-      milestoneCompletionTime: json['milestoneCompletionTime']?.toString(),
-      isMilestoneSouceUpdated: json['isMilestoneSouceUpdated'],
-      currentAllocationStrategy: json['currentAllocationStrategy']?.toString(),
-      isOptional: json['isOptional'],
+      jobMilestoneId: asInt(json['jobMilestoneId']),
+      elvId: asInt(json['elvId']),
+      vehicleTransactionId: asInt(json['vehicleTransactionId']),
+      milestoneTransactionCode: asString(json['milestoneTransactionCode']),
+      milestone: asString(json['milestone']),
+      milestoneCode: asString(json['milestoneCode']),
+      milestoneDescription: asString(json['milestoneDescription']),
+      milestioneEvent: asString(json['milestioneEvent']),
+      milestoneSequence: asInt(json['milestoneSequence']),
+      locationCode: asString(json['locationCode']),
+      locationName: asString(json['locationName']),
+      actualLane: asString(json['actualLane']),
+      expectedLane: asString(json['expectedLane']),
+      isRequiredMilestone: asBool(json['isRequiredMilestone']),
+      isActive: asBool(json['isActive']),
+      status: asString(json['status']),
+      remarks: asString(json['remarks']),
+      milestoneBeginTime: asString(json['milestoneBeginTime']),
+      milestoneCompletionTime: asString(json['milestoneCompletionTime']),
+      isMilestoneSouceUpdated: asBool(json['isMilestoneSouceUpdated']),
+      currentAllocationStrategy: asString(json['currentAllocationStrategy']),
+      isOptional: asBool(json['isOptional']),
       timeTakenToCompleteMilestone:
-          json['timeTakenToCompleteMilestone']?.toString(),
+          asString(json['timeTakenToCompleteMilestone']),
       timeTakenToCompleteMilestoneTransaction:
-          json['timeTakenToCompleteMilestoneTransaction']?.toString(),
+          asString(json['timeTakenToCompleteMilestoneTransaction']),
       totalTimeTakenToCompleteTransaction:
-          json['totalTimeTakenToCompleteTransaction']?.toString(),
-      elvCode: json['elvCode']?.toString(),
-      imagePath: json['imagePath']?.toString(),
-      milestoneActionsTracking: json['milestoneActionsTracking'] != null
+          asString(json['totalTimeTakenToCompleteTransaction']),
+      elvCode: asString(json['elvCode']),
+      imagePath: asString(json['imagePath']),
+      milestoneActionsTracking: json['milestoneActionsTracking'] is List
           ? (json['milestoneActionsTracking'] as List)
               .map(
                   (actionJson) => MilestoneActionsTracking.fromJson(actionJson))
@@ -172,19 +172,19 @@ class MilestoneActionsTracking {
 
   factory MilestoneActionsTracking.fromJson(Map<String, dynamic> json) {
     return MilestoneActionsTracking(
-      milestoneActionsTrackingId: json['milestoneActionsTrackingId'],
-      jobMilestoneId: json['jobMilestoneId'],
-      milestoneAction: json['milestoneAction']?.toString(),
-      actionCode: json['actionCode']?.toString(),
-      sequence: json['sequence'],
-      isRequired: json['isRequired'],
-      isActive: json['isActive'],
-      status: json['status']?.toString(),
-      isDependentOnAllPrevious: json['isDependentOnAllPrevious'],
-      completionTime: json['completionTime']?.toString(),
-      remarks: json['remarks']?.toString(),
-      canByPassFromUI: json['canByPassFromUI'],
-      deviceType: json['deviceType']?.toString(),
+      milestoneActionsTrackingId: asInt(json['milestoneActionsTrackingId']),
+      jobMilestoneId: asInt(json['jobMilestoneId']),
+      milestoneAction: asString(json['milestoneAction']),
+      actionCode: asString(json['actionCode']),
+      sequence: asInt(json['sequence']),
+      isRequired: asBool(json['isRequired']),
+      isActive: asBool(json['isActive']),
+      status: asString(json['status']),
+      isDependentOnAllPrevious: asBool(json['isDependentOnAllPrevious']),
+      completionTime: asString(json['completionTime']),
+      remarks: asString(json['remarks']),
+      canByPassFromUI: asBool(json['canByPassFromUI']),
+      deviceType: asString(json['deviceType']),
     );
   }
 
