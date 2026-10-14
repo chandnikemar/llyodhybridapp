@@ -59,18 +59,19 @@ class LoginViewModel extends ChangeNotifier {
         await prefs.setString(Common.jwtToken, authResponse.jwtToken);
         await prefs.setString(Common.refreshToken, authResponse.refreshToken);
 
+        // 🔹 LOG: Print authenticate API tokens
+        print('🔑 [Authenticate API] JWT Token: ${authResponse.jwtToken.substring(0, 20)}...');
+        print('🔑 [Authenticate API] Refresh Token: ${authResponse.refreshToken.substring(0, 20)}...');
+        print('🔑 [Authenticate API] Number of tenants: ${authResponse.userTenants.length}');
+
         // New fields
         await prefs.setString(Common.tenantGroup, authResponse.tenantGroup);
 
         await prefs.setString(
             Common.defaultTenantCode, authResponse.defaultTenantCode);
 
-        // --- NEW CONDITION ADDED HERE ---
-        // If the user has exactly 1 tenant, set selectedTenant to the defaultTenantCode
-        if (authResponse.userTenants.length == 1) {
-          await prefs.setString(
-              Common.selectedTenant, authResponse.defaultTenantCode);
-        }
+        // --- REMOVED: Don't set selectedTenant here ---
+        // selectedTenant will be set by switchTenant API for both single and multiple tenants
 
         await prefs.setString(Common.bpCode, authResponse.bpCode ?? '');
 
@@ -238,6 +239,85 @@ class LoginViewModel extends ChangeNotifier {
 
       // 🔹 RETURN NULL ON FAILURE
       return null;
+    }
+  }
+
+  // ==========================================
+  // SWITCH TENANT LOGIC
+  // ==========================================
+  Future<bool> switchTenant(String tenantCode) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // Get the current REFRESH TOKEN from authenticate API
+      final prefs = await SharedPreferences.getInstance();
+      final currentRefreshToken = prefs.getString(Common.refreshToken);
+
+      if (currentRefreshToken == null || currentRefreshToken.isEmpty) {
+        throw Exception("Session expired. Please log in again.");
+      }
+
+      print('🔑 [SwitchTenant ViewModel] Current refreshToken from authenticate API: ${currentRefreshToken.substring(0, 20)}...');
+
+      // Call switchTenant API with refreshToken
+      final response = await _apiService.switchTenant(tenantCode, currentRefreshToken);
+
+      if (response != null) {
+        final switchResponse = AuthenticateResponse.fromJson(response.data);
+
+        // 🔹 LOG: Print switchTenant API tokens
+        print('🔑 [SwitchTenant ViewModel] New jwtToken from switchTenant API: ${switchResponse.jwtToken.substring(0, 20)}...');
+        print('🔑 [SwitchTenant ViewModel] New refreshToken from switchTenant API: ${switchResponse.refreshToken.substring(0, 20)}...');
+
+        // Update stored tokens and user data with switchTenant response
+        await prefs.setString(Common.userName, switchResponse.userName);
+        await prefs.setString(Common.firstName, switchResponse.firstName);
+        await prefs.setString(Common.lastName, switchResponse.lastName);
+        await prefs.setString(Common.email, switchResponse.email);
+        await prefs.setString(Common.mobileNumber, switchResponse.mobileNumber);
+        await prefs.setString(Common.roleName, switchResponse.roleName);
+        await prefs.setBool(Common.isVerified, switchResponse.isVerified);
+
+        // 🔹 IMPORTANT: Update JWT token and refresh token with switchTenant response
+        await prefs.setString(Common.jwtToken, switchResponse.jwtToken);
+        await prefs.setString(Common.refreshToken, switchResponse.refreshToken);
+
+        // Update other fields
+        await prefs.setString(Common.tenantGroup, switchResponse.tenantGroup);
+        await prefs.setString(Common.defaultTenantCode, switchResponse.defaultTenantCode);
+        await prefs.setString(Common.selectedTenant, tenantCode);
+        await prefs.setString(Common.bpCode, switchResponse.bpCode ?? '');
+
+        // Update access and menu permissions
+        await prefs.setString(
+            Common.userAccess,
+            jsonEncode(
+                switchResponse.userAccess.map((e) => e.toJson()).toList()));
+
+        await prefs.setString(
+            Common.menuAccess,
+            jsonEncode(
+                switchResponse.menuAccess.map((e) => e.toJson()).toList()));
+
+        // 🔹 IMPORTANT: Do NOT update userTenants from switchTenant response
+        // Keep the original tenant list from authenticate API
+        // This ensures the dropdown list remains unchanged
+
+        print('🔑 [SwitchTenant ViewModel] Tokens updated successfully for tenant: $tenantCode');
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        throw Exception("Invalid response from server");
+      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 }

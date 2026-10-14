@@ -37,6 +37,7 @@ class Common {
 
   //Authenticate
   static  String postAuthenticate = "apgw/tgs/AuthService/authenticate";
+  static  String switchTenant = "apgw/tgs/AuthService/switchTenant";
   static  String getRefreshToken = "apgw/UserManagement/refreshtoken";
   static  String changePassword = "apgw/tgs/UserManager/change-password";
   static  String forgotPassword="apgw/tgs/AuthService/forgot-password";

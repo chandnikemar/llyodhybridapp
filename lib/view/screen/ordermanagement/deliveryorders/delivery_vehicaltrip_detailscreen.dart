@@ -264,13 +264,33 @@ class _VehicleTripScreenState extends State<VehicleTripScreen> {
                       children: [
                         _buildInfoChipsGrid(dhModel, detail.isNotEmpty ? detail.first : null),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Trip Timeline',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1D2939),
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.timeline,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Trip Timeline',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E293B),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         timeline,
@@ -389,11 +409,12 @@ class _VehicleTripScreenState extends State<VehicleTripScreen> {
     return numbers.isEmpty ? '-' : numbers.join(', ');
   }
 
-  // Mobile-optimized pill grid for trip metadata
+  // Mobile-optimized grid for trip metadata - only shows items with values.
+  // Flat design: no borders, no shadows.
   Widget _buildInfoChipsGrid(SingleDhModel? dhModel, VehicleMilestoneResponse? detail) {
     final String sapInvoice = _firstNonEmpty([detail?.sapInvoiceNo, txn.sapInvoiceNo]);
 
-    final List<Map<String, String>> infoItems = [
+    final List<Map<String, String>> allInfoItems = [
       {'label': 'VRN', 'value': _firstNonEmpty([detail?.vrn, txn.vrn])},
       {'label': 'Driver', 'value': _firstNonEmpty([dhModel?.name, detail?.driverName, txn.driverName])},
       {'label': 'Mobile', 'value': _firstNonEmpty([dhModel?.mobileNo, detail?.driverMobileNo])},
@@ -412,43 +433,67 @@ class _VehicleTripScreenState extends State<VehicleTripScreen> {
       {'label': 'Quantity', 'value': '${_formatNumber(detail?.totalNW ?? 0)} MTS'},
     ];
 
+    // Filter out items with empty values
+    final List<Map<String, String>> infoItems = allInfoItems
+        .where((item) => item['value'] != null && item['value']!.isNotEmpty && item['value'] != '-')
+        .toList();
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEAECF0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: infoItems.map((item) => _infoChip(item['label']!, item['value']!)).toList(),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 2.2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
+        itemCount: infoItems.length,
+        itemBuilder: (context, index) {
+          return _infoChip(infoItems[index]['label']!, infoItems[index]['value']!);
+        },
       ),
     );
   }
 
   Widget _infoChip(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        border: Border.all(color: const Color(0xFFD0D5DD)),
-        borderRadius: BorderRadius.circular(6),
+        color: const Color(0xFFF1F5F9), // soft tinted fill instead of border/shadow
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        '$label: $value',
-        style: const TextStyle(
-          fontSize: 11.5,
-          color: Color(0xFF344054),
-          fontWeight: FontWeight.w500,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF1E293B),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -506,37 +551,328 @@ class _VehicleTripScreenState extends State<VehicleTripScreen> {
     final VehicleMilestoneResponse? detailObj =
     (details != null && details.isNotEmpty) ? details.first : null;
 
+    // Calculate current step (first incomplete milestone)
+    int currentStep = 0;
+    if (steps.isNotEmpty) {
+      final firstIncompleteIndex = steps.indexWhere((step) =>
+      (step.status ?? '').trim().toLowerCase() != 'completed'
+      );
+      currentStep = firstIncompleteIndex == -1 ? steps.length - 1 : firstIncompleteIndex;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int index = 0; index < steps.length; index++)
-          _buildMilestoneStageCard(steps[index], index, detailObj),
-        if (tripTat.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFEAECF0)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+        Stepper(
+          currentStep: currentStep,
+          physics: const NeverScrollableScrollPhysics(),
+          // NOTE: connector colour is now set per step via StepStyle below.
+          steps: steps.asMap().entries.map((entry) {
+            final step = entry.value;
+            final index = entry.key;
+            final String status = (step.status ?? '').trim().toLowerCase();
+            final bool isCompleted = status == 'completed';
+            final bool isLive = !isCompleted &&
+                (status == 'in progress' ||
+                    status == 'in-progress' ||
+                    status == 'active' ||
+                    (status.isEmpty &&
+                        _clean(step.milestoneBeginTime).isNotEmpty &&
+                        _clean(step.milestoneCompletionTime).isEmpty));
+
+            final String name = _clean(step.milestone);
+            final String event = _clean(step.milestioneEvent);
+            final String title = name.isEmpty
+                ? 'Milestone'
+                : (event.isEmpty ? _titleCase(name) : '${_titleCase(name)} - ${_titleCase(event)}');
+
+            final String location = _clean(step.locationName);
+            final String? weight = _stageWeightLabel(step, detailObj, details);
+
+            final String perStage = _clean(step.timeTakenToCompleteMilestone);
+            final String duration =
+            perStage.isNotEmpty ? perStage : _clean(step.timeTakenToCompleteMilestoneTransaction);
+
+            final List<MilestoneActionsTracking> subActions = List<MilestoneActionsTracking>.from(
+              step.milestoneActionsTracking ?? <MilestoneActionsTracking>[],
+            )..sort(
+                  (a, b) => (a.sequence ?? (1 << 30)).compareTo(b.sequence ?? (1 << 30)),
+            );
+
+            final bool isExpanded = _expandedIndices.contains(index);
+
+            return Step(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.local_shipping, size: 16, color: Color(0xFF0878B8)),
-                  const SizedBox(width: 8),
+                  Row(
+                    children: [
+                      if (isCompleted)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF3),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Completed',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF027A48),
+                            ),
+                          ),
+                        ),
+                      if (isLive)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF3B82F6),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Live',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Text(
-                    'Trip TAT : $tripTat',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D2939),
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isCompleted ? const Color(0xFF027A48) : const Color(0xFF1E293B),
+                      letterSpacing: 0.3,
                     ),
                   ),
+                  if (location.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            location,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isCompleted
+                            ? _formatStageDateTime(
+                          _bestTimeValue(step.milestoneCompletionTime, step.milestoneBeginTime),
+                        )
+                            : isLive
+                            ? _formatStageDateTime(step.milestoneBeginTime)
+                            : 'Not started',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                      if (weight != null) ...[
+                        const SizedBox(width: 16),
+                        const Icon(
+                          Icons.scale,
+                          size: 14,
+                          color: Color(0xFF6366F1),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$weight MTS',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6366F1),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (duration.isNotEmpty && duration != '-')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.timer_outlined,
+                            size: 14,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Duration: $duration',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              // Completed steps get the check icon + green fill.
+              state: isCompleted ? StepState.complete : StepState.indexed,
+              isActive: isCompleted || isLive,
+              stepStyle: StepStyle(
+                color: isCompleted
+                    ? const Color(0xFF10B981) // green when completed
+                    : isLive
+                    ? const Color(0xFF3B82F6) // blue when live
+                    : const Color(0xFFCBD5E1), // grey when pending
+                connectorColor: isCompleted
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFE2E8F0),
+                connectorThickness: 2,
+              ),
+              content: subActions.isEmpty
+                  ? const SizedBox.shrink()
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => _toggleExpansion(index),
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF6366F1).withOpacity(0.1),
+                            const Color(0xFF8B5CF6).withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.task_alt,
+                            size: 16,
+                            color: Color(0xFF6366F1),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'View ${subActions.length} Action${subActions.length > 1 ? 's' : ''}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6366F1),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            size: 20,
+                            color: const Color(0xFF6366F1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (isExpanded) ...[
+                    const SizedBox(height: 12),
+                    _buildMilestoneActionsStepper(step, subActions),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+          controlsBuilder: (context, details) {
+            return const SizedBox.shrink();
+          },
+        ),
+        if (tripTat.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF6366F1).withOpacity(0.1),
+                  const Color(0xFF8B5CF6).withOpacity(0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.local_shipping,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total Trip Time',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      tripTat,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -759,11 +1095,7 @@ class _VehicleTripScreenState extends State<VehicleTripScreen> {
                   style: TextStyle(fontSize: 12, color: Color(0xFF98A2B3)),
                 ),
               )
-                  : Column(
-                children: subActions.asMap().entries.map((entry) {
-                  return _buildMobileSubActionCard(step, entry.value, entry.key + 1);
-                }).toList(),
-              ),
+                  : _buildMilestoneActionsStepper(step, subActions),
             ),
         ],
       ),
@@ -920,6 +1252,196 @@ class _VehicleTripScreenState extends State<VehicleTripScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // LIST UI FOR MILESTONE ACTIONS (No nested Stepper)
+  // ==========================================
+  Widget _buildMilestoneActionsStepper(
+      MilestonePlanResponseModel step,
+      List<MilestoneActionsTracking> subActions) {
+    // Sort actions by sequence
+    final sortedActions = List<MilestoneActionsTracking>.from(subActions)
+      ..sort((a, b) => (a.sequence ?? (1 << 30)).compareTo(b.sequence ?? (1 << 30)));
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFF8F9FA),
+            const Color(0xFFF1F5F9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: sortedActions.asMap().entries.map((entry) {
+          final action = entry.value;
+          final index = entry.key;
+          final String actionName = _clean(action.milestoneAction);
+          final String status = _clean(action.status);
+          final bool isCompleted = status.toLowerCase() == 'completed';
+          final String remark = _clean(action.remarks);
+          final String lowerName = actionName.toLowerCase();
+          final bool hasImage = lowerName.contains('camera');
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isCompleted
+                    ? [Colors.white, const Color(0xFFECFDF3)]
+                    : [Colors.white, const Color(0xFFF8F9FA)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isCompleted ? const Color(0xFF6EE7B7) : const Color(0xFFE2E8F0),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Status icon with animated background
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    gradient: isCompleted
+                        ? const LinearGradient(
+                      colors: [Color(0xFF10B981), Color(0xFF34D399)],
+                    )
+                        : const LinearGradient(
+                      colors: [Color(0xFFCBD5E1), Color(0xFF94A3B8)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: isCompleted
+                            ? const Color(0xFF10B981).withOpacity(0.3)
+                            : Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check : Icons.circle_outlined,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Action details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        actionName.isEmpty ? "Action" : actionName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isCompleted ? const Color(0xFF059669) : const Color(0xFF1E293B),
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatStageDateTime(action.completionTime),
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                      if (remark.isNotEmpty && remark != '-')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.comment_outlined,
+                                size: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  remark,
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (hasImage)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _showMilestoneImage(step),
+                                borderRadius: BorderRadius.circular(6),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.image, size: 14, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'View Image',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

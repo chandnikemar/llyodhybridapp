@@ -292,6 +292,31 @@ class ApiService {
     }
   }
 
+  // Switch Tenant
+  Future<Response?> switchTenant(String tenantCode, String refreshToken) async {
+    try {
+      final baseUrl = await _getFullUrl();
+      print('🔑 [SwitchTenant API] Request with tenantCode: $tenantCode');
+      print('🔑 [SwitchTenant API] Using refreshToken: ${refreshToken.substring(0, 20)}...');
+      final response = await _dio.post(
+        "$baseUrl${Common.switchTenant}",
+        data: {
+          'tenantCode': tenantCode,
+          'Token': refreshToken,
+        },
+      );
+      if (response.data != null && response.data['jwtToken'] != null) {
+        print('🔑 [SwitchTenant API] Response jwtToken: ${response.data['jwtToken'].substring(0, 20)}...');
+      }
+      if (response.data != null && response.data['refreshToken'] != null) {
+        print('🔑 [SwitchTenant API] Response refreshToken: ${response.data['refreshToken'].substring(0, 20)}...');
+      }
+      return response; // Return Response object if successful
+    } on DioException catch (e) {
+      return handleDioException(e, 'message');
+    }
+  }
+
   // Login
   Future<Response?> changePassword(String username, String password,
       String oldPassword, String confirmPassword) async {

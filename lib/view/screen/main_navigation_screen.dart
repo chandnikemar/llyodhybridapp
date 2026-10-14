@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:provider/provider.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,6 +17,7 @@ import '../../model/mainnavigation/menu_model.dart';
 import '../../utilities/common.dart';
 import '../../utilities/common_config.dart';
 import '../../utilities/common_dialog.dart';
+import '../../view_model/login_view_model.dart';
 
 import 'managementreports/managedailydispatchreport/mgm_daily_dispatch_report_screen.dart';
 import 'managementreports/mgmsalesreport/mgm_sales_resport_screen.dart';
@@ -55,6 +57,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   List<Map<String, dynamic>> _tenants = [];
   Map<String, dynamic>? _selectedTenant;
   bool _isLoadingTenants = true;
+  bool _isSwitchingTenant = false;
 
   @override
   void initState() {
@@ -432,7 +435,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   // 🔹 TENANT DROPDOWN (ONLY SHOWS IF NOT ON DASHBOARD) 🔹
                   // ==========================================
                   if (_activeRoute != '/dashboards/dashboard1' && _activeRoute != '/profile')
-                    _isLoadingTenants
+                    _isLoadingTenants || _isSwitchingTenant
                         ? const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16.0),
@@ -471,12 +474,52 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                 isDense: false,
                                 dropdownColor: Colors.white,
                                 onChanged: (String? newTenantCode) async {
-                                  if (newTenantCode != null) {
+                                  if (newTenantCode != null && newTenantCode != _selectedTenant?['tenantCode']) {
+                                    print('🔑 [Drawer] Switching tenant from ${_selectedTenant?['tenantCode']} to $newTenantCode');
+
+                                    // Show loading state
                                     setState(() {
-                                      _selectedTenant = _tenants.firstWhere((t) => t['tenantCode'] == newTenantCode);
+                                      _isSwitchingTenant = true;
                                     });
-                                    final prefs = await SharedPreferences.getInstance();
-                                    await prefs.setString(Common.selectedTenant, newTenantCode);
+
+                                    // Call switchTenant API
+                                    final loginViewModel = Provider.of<LoginViewModel>(context, listen: false);
+                                    final success = await loginViewModel.switchTenant(newTenantCode);
+
+                                    if (success) {
+                                      // Update selected tenant and reload data
+                                      setState(() {
+                                        _selectedTenant = _tenants.firstWhere((t) => t['tenantCode'] == newTenantCode);
+                                        _isSwitchingTenant = false;
+                                      });
+
+                                      // Reload menus and other data with new tenant permissions
+                                      await _loadMenusFromPrefs();
+
+                                      // Navigate to dashboard after successful switch
+                                      setState(() {
+                                        _activeRoute = '/dashboards/dashboard1';
+                                        _currentIndex = 0;
+                                      });
+
+                                      Navigator.pop(context);
+                                      print('🔑 [Drawer] Tenant switched successfully to $newTenantCode');
+                                    } else {
+                                      // Revert selection if switch fails
+                                      setState(() {
+                                        _isSwitchingTenant = false;
+                                      });
+
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(loginViewModel.errorMessage ?? 'Failed to switch tenant'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                      print('🔑 [Drawer] Failed to switch tenant: ${loginViewModel.errorMessage}');
+                                    }
                                   }
                                 },
                                 items: _tenants.map<DropdownMenuItem<String>>((Map<String, dynamic> tenant) {
