@@ -1,0 +1,581 @@
+/*
+package model.textfiles;
+
+import 'package:flutter/material.dart';
+import 'package:kydms_usa/demo_my_transaction.dart';
+import 'dart:math';
+
+import 'package:kydms_usa/demo_park_repark.dart';
+import 'package:kydms_usa/demo_production_out_page.dart';
+import 'package:kydms_usa/demo_search_vehicle_page.dart';
+import 'package:kydms_usa/view/screen/production_out_screen.dart';
+import 'package:kydms_usa/view/screen/search_vehicle_screen.dart';
+
+import 'my_transaction_screen.dart';
+
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Screen dimensions
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double topCardHeight = screenHeight * 0.27;
+    var isInsideGeofence = false;
+    final double childAspectRatio = screenHeight > 800
+        ? 1.2
+        : (screenHeight > 600 && screenHeight <= 800)
+            ? 1.5
+
+            : 1.2;
+    final double internalCircleSize = screenHeight > 800
+        ? 70
+        : (screenHeight > 600 && screenHeight <= 800)
+            ? 50
+            : 50;
+
+    // Donut chart data
+    final List<int> donutData = [20, 30, 50];
+    final List<Color> donutColors = [Colors.red, Colors.green, Colors.blue];
+    final double total = 100;
+
+    // Card background colors
+    final List<Color> cardColors = [
+      Color(0xFFFFF5E3), // Yellow
+      Color(0xFFE2EEFA), // Blue
+      Color(0xFFFFEAEA), // Red
+      Color(0xFFD4F1D2),
+      Color(0xFFC1F5E1), // Green
+      Color(0xFFC5C9F2), // Light Yellow
+      // Light Blue
+    ];
+
+    // Circle background colors for icons
+    final List<Color> circleColors = [
+      Color(0xFFFFE8BE), // Yellow
+      Color(0xFFC7E1FF), // Blue
+      Color(0xFFFFD7D7), // Red
+      Color(0xFFA9E5A6),
+      Color(0xFFA7ECD7), // Green
+      Color(0xFF9CA6E0), // Yellow (repeat for extra cards)
+      // Blue (repeat for extra cards)
+    ];
+
+    // Icons for cards
+    final List<String> cardIcons = [
+      'assets/images/prd_out_list.png',
+      'assets/images/parking_icon.png',
+      'assets/images/search_car_icon.png',
+      'assets/images/my_transaction.png',
+      'assets/images/dispatch_car_icon.png',
+      'assets/images/sitting_icon.png',
+    ];
+
+    final List<String> cardText = [
+      'PRODUCTION OUT',
+      'PARK/REPARK',
+      'SEARCH VEHICLE',
+      'MY TRANSACTION',
+      'DISPATCH VEHICLE',
+      'ADMIN SETTING',
+    ];
+
+    return Scaffold(
+      backgroundColor:     Colors.grey[200]!,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor:     Colors.grey[200]!,
+    */
+/*    flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[200]!,
+                Colors.grey[700]!,
+              ],
+            ),
+          ),
+        ),*//*
+
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Image.asset(
+              'assets/images/kyms_logo.png',
+              width: 50,
+              height: 50,
+            ),
+            Text(
+              "HOME",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/reset_password.png',
+                  width: 35,
+                  height: 35,
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                Image.asset(
+                  'assets/images/logout.png',
+                  width: 35,
+                  height: 35,
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    // Original Image
+                    Image.asset(
+                      'assets/images/is_inside_geofence.png',
+                      width: 35,
+                      height: 35,
+                    ),
+
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isInsideGeofence
+                              ? Colors.green
+                              : Colors.red, // Change based on boolean
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              ],
+            ),
+          ],
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey[200]!,
+              Colors.grey[700]!,
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            children: [
+              // Donut Chart Container
+              Padding(
+                padding: const EdgeInsets.only(left: 5, right: 5),
+                child: Container(
+                  height: topCardHeight,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEDEFFB), // Card color
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                          padding: const EdgeInsets.only(left: 10, top: 10),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              // Aligns the text to the start
+                              children: [
+                                Text(
+                                  'Hi, Superadmin',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                    fontFamily: 'Segoe UI',
+                                  ),
+                                ),
+                                Text(
+                                  'Live Data',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    fontFamily: 'Segoe UI',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                      SizedBox(height: 10), // Space between text and chart
+
+                      // Row for donut chart and colored boxes
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Donut Chart
+                            DonutChart(
+                              data: donutData,
+                              colors: donutColors,
+                              total: total,
+                              radius: 6.0,
+                            ),
+                            SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  BoxWithText(
+                                      color: Colors.blue,
+                                      text: 'Product Out',
+                                      data: donutData[0]),
+                                  SizedBox(height: 10), // Space between boxes
+                                  BoxWithText(
+                                      color: Colors.green,
+                                      text: 'My Transaction',
+                                      data: donutData[1]),
+                                  SizedBox(height: 10), // Space between boxes
+                                  BoxWithText(
+                                      color: Colors.red,
+                                      text: 'In Yard',
+                                      data: donutData[2]),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Grid of Cards
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: GridView.builder(
+                    itemCount: cardIcons.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: childAspectRatio,
+                    ),
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () {
+                          if (index == 0) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ProductionOut()),
+                            );
+                          } else if (index == 1) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DemoParkRepark()),
+                            );
+                          } else if (index == 2) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => SearchVehicle()),
+                            );
+                          } else if (index == 3) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => MyTransaction()),
+                            );
+                          } */
+/*else if (index == 2) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => BnmPage()),
+                            );
+                          }*//*
+
+                        },
+                        child: Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          color: cardColors[index],
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: internalCircleSize,
+                                height: internalCircleSize,
+                                decoration: BoxDecoration(
+                                  color: circleColors[index],
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Image.asset(
+                                    cardIcons[index],
+                                    width: 30,
+                                    height: 30,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              // Add space between icon and text
+                              Text(
+                                cardText[index],
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DonutChart extends StatelessWidget {
+  final List<int> data;
+  final List<Color> colors;
+  final double total;
+  final double radius;
+
+  DonutChart({
+    required this.data,
+    required this.colors,
+    required this.total,
+    this.radius = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double donutHeight = screenHeight > 800
+        ? 125
+        : (screenHeight > 600 && screenHeight <= 800)
+            ? 90
+            : 100;
+    return CustomPaint(
+      size: Size(donutHeight, donutHeight), // Adjust size of the chart
+      painter: DonutChartPainter(
+        data: data,
+        colors: colors,
+        total: total,
+        radius: radius,
+      ),
+    );
+  }
+}
+
+class DonutChartPainter extends CustomPainter {
+  final List<int> data;
+  final List<Color> colors;
+  final double total;
+  final double radius;
+  final double gapPercentage; // Added for spacing control
+
+  DonutChartPainter({
+    required this.data,
+    required this.colors,
+    required this.total,
+    required this.radius,
+    this.gapPercentage = 0.04, // Default gap percentage (1%)
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = radius
+      ..strokeCap = StrokeCap.round; // This makes the edges rounded
+
+    double startAngle = -pi / 2; // Start from the top
+    double gapAngle =
+        gapPercentage * 2 * pi; // Convert the gap percentage into radians
+
+    // Iterate through each segment and draw them
+    for (int i = 0; i < data.length; i++) {
+      final double sweepAngle = (data[i] / total) * 2 * pi -
+          gapAngle; // Adjust sweep angle to allow for gap
+      paint.color = colors[i];
+
+      // Draw each segment with a gap
+      canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: size.width / 2 - radius),
+        startAngle,
+        sweepAngle,
+        false,
+        paint,
+      );
+
+      // Update the start angle for the next segment, adding the gap angle as well
+      startAngle += sweepAngle +
+          gapAngle; // Include gap in the angle for the next segment
+    }
+
+    // Now draw the total count at the center of the chart
+    final TextSpan textSpan = TextSpan(
+      text: 'Total\n$total', // The total count to display
+      style: TextStyle(
+        fontSize: 12, // Adjust the font size as necessary
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+
+    final TextPainter textPainter = TextPainter(
+      text: textSpan,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+
+    // Layout the text
+    textPainter.layout(
+      minWidth: 0,
+      maxWidth: size.width,
+    );
+
+    // Draw the text in the center of the chart
+    final Offset textOffset = Offset(
+      (size.width - textPainter.width) / 2,
+      (size.height - textPainter.height) / 2,
+    );
+
+    textPainter.paint(canvas, textOffset);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
+}
+
+class BoxWithText extends StatelessWidget {
+  final Color color;
+  final String text;
+  final int data;
+
+  BoxWithText({required this.color, required this.text, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(5), // Set the rounded radius
+          ),
+        ),
+        SizedBox(width: 8), // Space between the box and text
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        SizedBox(
+          width: 10,
+        ),
+        Text(
+          "$data",
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+*/
+
+
+//plugin code Zebra SDK
+
+    override fun eventReadNotify(e: RfidReadEvents) {
+        /*     val myTags: Array<TagData> = reader.Actions.getReadTags(100)
+             for (index in myTags.indices) {
+                 Log.d(LOG_TAG, "Tag ID " + myTags[index].tagID)
+             }*/
+
+        /*val tagData = reader.Actions.getReadTags(100)
+        if (tagData != null && tagData.isNotEmpty()) {
+            Log.d("RFID_TAG", "Tag Read: ${tagData[0].tagID}")
+            readTagEvent.sendEvent(tagData[0].tagID.toString())
+        }*/
+
+        val currentTime = System.currentTimeMillis()
+        val tagData = reader.Actions.getReadTags(1)
+        tagData?.let { tags ->
+            for (tag in tags) {
+                val tagId = tag.tagID
+                if (!processedTags.contains(tagId) && (currentTime - lastTagReadTime) > DEBOUNCE_DELAY_MS) {
+                    // Check if tag has not been processed and debounce delay has passed
+                    Log.d("TAG", "Tag ID: $tagId")
+
+                    if (tag.opCode == ACCESS_OPERATION_CODE.ACCESS_OPERATION_READ &&
+                        tag.opStatus == ACCESS_OPERATION_STATUS.ACCESS_SUCCESS
+                    ) {
+                        if (tag.memoryBankData.isNotEmpty()) {
+                            Log.d("TAG", "Mem Bank Data: ${tag.memoryBankData}")
+                        }
+                    }
+                    if (tag.isContainsLocationInfo) {
+                        val dist = tag.LocationInfo.relativeDistance
+                        Log.d("TAG", "Tag relative distance: $dist")
+                    }
+
+                    processedTags.add(tagId) // Add tag to processed set
+                    lastTagReadTime = currentTime // Update last tag read time
+
+                    // Clear processed tags after a delay to allow reprocessing later
+                    handler.postDelayed({ processedTags.clear() }, LIST_CLEAR_DELAY_MS)
+                    Log.d("TAG", "Tag processed: $processedTags")
+                    // Send event with tag ID
+                    readTagEvent.sendEvent(tagId)
+                }
+            }
+        }
+    }
