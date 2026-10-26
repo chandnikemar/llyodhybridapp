@@ -728,7 +728,7 @@ class ApiService {
     }
   }
 
-  Future<Response?>postFilterCustomers(CustomerRequestModel request) async {
+  Future<Response?> postFilterCustomers(CustomerRequestModel request) async {
     try {
       final baseUrl = await _getFullUrl();
       return await _dio.post(

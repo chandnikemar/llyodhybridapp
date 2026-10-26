@@ -25,7 +25,7 @@ class CustomerRequestModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'CustomerId': customerId,
+      'CustomerId': customerId ?? 0,
       'CustomerName': customerName,
       'CustomerCode': customerCode,
       'PhoneNo': phoneNo,

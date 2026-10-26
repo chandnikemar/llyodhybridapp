@@ -60,35 +60,53 @@ class CustomerLocationResponseModel {
   });
 
   factory CustomerLocationResponseModel.fromJson(Map<String, dynamic> json) {
+    dynamic read(String camel, [List<String> alternates = const []]) {
+      final value = json[camel];
+      if (value != null) return value;
+      for (final key in alternates) {
+        final alternate = json[key];
+        if (alternate != null) return alternate;
+      }
+      return null;
+    }
+
+    String pascal(String value) => value.isEmpty
+        ? value
+        : '${value[0].toUpperCase()}${value.substring(1)}';
+
+    dynamic field(String name, [List<String> extraKeys = const []]) =>
+        read(name, [pascal(name), ...extraKeys]);
+
     return CustomerLocationResponseModel(
-      customerLocationId: json['customerLocationId'],
-      addressLine1: json['addressLine1'],
-      city: json['city'],
-      state: json['state'],
-      stateCode: json['stateCode'],
-      pincode: json['pincode'],
-      contactNumber: json['contactNumber'],
-      locationCode: json['locationCode'],
-      locationType: json['locationType'],
-      addressLine2: json['addressLine2'],
-      country: json['country'],
-      district: json['district'],
-      spocName: json['spocName'],
-      spocContactNumber: json['spocContactNumber'],
-      gstNo: json['gstNo'],
-      emailId: json['emailId'],
-      customerId: json['customerId'],
-      customerName: json['customerName'],
-      customerCode: json['customerCode'],
-      totalRecord: json['totalRecord'],
-      totalPages: json['totalPages'],
-      isActive: json['isActive'],
-      createdBy: json['createdBy'],
-      createdDate: json['createdDate'],
-      modifiedBy: json['modifiedBy'],
-      modifiedDate: json['modifiedDate'],
-      tenantGroupCode: json['tenantGroupCode'],
-      tenantCode: json['tenantCode'],
+      customerLocationId: field('customerLocationId'),
+      addressLine1: field('addressLine1'),
+      city: field('city'),
+      state: field('state'),
+      stateCode: field('stateCode'),
+      pincode: field('pincode', const ['PinCode', 'PinCodeNo']),
+      contactNumber: field('contactNumber'),
+      locationCode: field('locationCode'),
+      locationType: field('locationType'),
+      addressLine2: field('addressLine2'),
+      country: field('country'),
+      district: field('district'),
+      spocName: field('spocName', const ['SPOCName']),
+      spocContactNumber:
+          field('spocContactNumber', const ['SPOCContactNumber']),
+      gstNo: field('gstNo', const ['GSTNo', 'GstNo']),
+      emailId: field('emailId', const ['EmailID', 'EmailId']),
+      customerId: field('customerId'),
+      customerName: field('customerName'),
+      customerCode: field('customerCode'),
+      totalRecord: field('totalRecord'),
+      totalPages: field('totalPages'),
+      isActive: field('isActive'),
+      createdBy: field('createdBy'),
+      createdDate: field('createdDate'),
+      modifiedBy: field('modifiedBy'),
+      modifiedDate: field('modifiedDate'),
+      tenantGroupCode: field('tenantGroupCode'),
+      tenantCode: field('tenantCode'),
     );
   }
 

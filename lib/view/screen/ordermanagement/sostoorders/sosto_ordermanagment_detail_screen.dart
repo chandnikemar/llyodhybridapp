@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../model/ordermanagement/sosto/mdo_response.dart';
+import '../../../../model/ordermanagement/sosto/sostodetail/customer_location_response_model.dart';
+import '../../../../model/ordermanagement/sosto/sostodetail/customer_response_model.dart';
 import '../../../../utilities/common.dart';
 import '../../../../view_model/ordermanagement_view_model.dart';
 
@@ -28,7 +31,7 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
     'order': true,
     'plant': true,
     'shipping': true,
-    'payment': true,
+    'additional': true,
     'material': true,
     'delivery': true,
   };
@@ -94,8 +97,41 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
     viewModel.postFilterProduct(id('productId'));
     viewModel.getAlltenantgroup();
     viewModel.getAllTenants();
-    viewModel.postFilterSingleCustomerDeliveryLocation(locationCode);
+    viewModel.clearCustomerLocationCache();
+    if (locationCode.isNotEmpty && locationCode != '-') {
+      viewModel.postFilterSingleCustomerDeliveryLocation(locationCode);
+    }
     viewModel.postFilterLocationWithPagination(plantCode, resolvedTenantCode);
+
+    // Billing location address (fetched separately from the shipping location)
+    final String billingLocationCode =
+        data['billingLocation']?.toString().trim() ?? '';
+    if (billingLocationCode.isNotEmpty &&
+        billingLocationCode != '-' &&
+        billingLocationCode != locationCode) {
+      viewModel.postFilterSingleCustomerDeliveryLocation(billingLocationCode);
+    }
+
+    // Call fetchCustomerByCode to get ship to party details (for shipping section)
+    final String shipToPartyCode = data['shipToParty']?.toString() ?? '';
+    if (shipToPartyCode.isNotEmpty) {
+      viewModel.fetchCustomerByCode(shipToPartyCode, isSoldToParty: false);
+    }
+
+    // Call fetchCustomerByCode to get sold to party details (for PAN number)
+    final String soldToPartyCode = data['soldToParty']?.toString() ?? '';
+    if (soldToPartyCode.isNotEmpty) {
+      viewModel.fetchCustomerByCode(soldToPartyCode, isSoldToParty: true);
+    }
+
+    // Call fetchSingleMdoMaster to get detailed order information
+    final String mdoNumberStr = data['mdoNumber']?.toString() ?? '';
+    if (mdoNumberStr.isNotEmpty) {
+      final int? mdoNumber = int.tryParse(mdoNumberStr);
+      if (mdoNumber != null) {
+        viewModel.fetchSingleMdoMaster(mdoNumber, resolvedTenantCode);
+      }
+    }
   }
 
   void _toggle(String key) =>
@@ -278,7 +314,7 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
                   const SizedBox(height: 14),
                   _buildShippingDetailsSection(data),
                   const SizedBox(height: 14),
-                  _buildPaymentDetailsSection(data),
+                  _buildAdditionalDetailsSection(data),
                 ] else
                   _buildPlantDetailsSection(data),
                 const SizedBox(height: 14),
@@ -441,77 +477,307 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
 
 
   Widget _buildPartyDetailsSection(Map<String, dynamic> data) {
+    final viewModel = Provider.of<OrderManagementViewModel>(context, listen: false);
+    final String soldToPartyCode = _v(data, ['soldToParty']);
+    final String soldToPartyName = _v(data, ['soldToPartyName']);
+    final String billingLocation = _v(data, ['billingLocation']);
+
+    // Get sold to party customer details from API response
+    final CustomerResponseModel? soldToCustomerDetails = viewModel.soldToPartyCustomer;
+
+    // Get billing location details from API response (exact match only, so we
+    // never display another location's address).
+    final billingLocationDetails =
+        viewModel.customerLocationFor(billingLocation);
+
     return _sectionShell(
       sectionKey: 'party',
       icon: Icons.handshake_outlined,
       title: 'Party Details',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _gridRow([
-            _Field('Sold to Party', _v(data, ['soldToParty'])),
-            _Field('Billing Location', _v(data, ['billingLocation'])),
-          //   _Field('Ship To Party', _v(data, ['shipToParty'])),
-          //   _Field('Customer Reference', _v(data, ['customerReference'])),
-          // ]),
-          // const SizedBox(height: 16),
-          // _gridRow([
-          //   _Field('Customer Ref Date',
-          //       _formatDate(_v(data, ['customerRefDate']))),
-          //   _Field('Order Valid Till',
-          //       _formatDate(_v(data, ['orderValidTill']))),
-            const SizedBox(),
-          ]),
+          // Sold To Party Section
+          const Text(
+            'Sold To Party',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  soldToPartyName != '-' ? '$soldToPartyName - $soldToPartyCode' : soldToPartyCode,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _dark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildDetailRow('Customer Code', soldToCustomerDetails?.customerCode ?? soldToPartyCode),
+                _buildDetailRow('Address', soldToCustomerDetails?.address ?? '-'),
+                _buildDetailRow('PAN No', soldToCustomerDetails?.panNo ?? '-'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Billing Location Section
+          const Text(
+            'Billing Location',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _billingLocationHeading(billingLocation, billingLocationDetails),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _dark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildDetailRow('Customer Code',
+                   billingLocation),
+                _buildDetailRow('Address',
+                    _locationAddress(billingLocationDetails)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildShippingDetailsSection(Map<String, dynamic> data) {
+    final viewModel = Provider.of<OrderManagementViewModel>(context, listen: false);
+    final String shipToPartyCode = _v(data, ['shipToParty']);
+    final String shipToPartyName = _v(data, ['shipToPartyName']);
+    final String shippingLocation = _v(data, ['shippingLocation']);
+
+
+    final CustomerResponseModel? customerDetails = viewModel.shipToPartyCustomer;
+
+    final locationDetails = viewModel.customerLocationFor(shippingLocation);
+
     return _sectionShell(
       sectionKey: 'shipping',
       icon: Icons.local_shipping_outlined,
       title: 'Shipping Details',
-      child: _gridRow([
-        _Field('Shipping Point', _v(data, ['shipToPartyName'])),
-        _Field('Shipping Location', _v(data, ['shipToParty'])),
-        // _Field('Required Delivery Start Date',
-        //     _formatDate(_v(data, ['requiredDeliveryStartDate']))),
-      ]),
-    );
-  }
-
-  Widget _buildPaymentDetailsSection(Map<String, dynamic> data) {
-    final String status = _v(data, ['status']) == '-' ? 'OPEN' : _v(data, ['status']);
-
-    return _sectionShell(
-      sectionKey: 'payment',
-      icon: Icons.credit_card_outlined,
-      title: 'Payment Details',
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-              flex: 3,
-              child: _Field('Payment Terms', _v(data, ['paymentTerms']))),
-          Expanded(
-              flex: 2,
-              child: _Field('Aggregate Dis.',
-                  _v(data, ['aggregateDis']) == '-' ? '0' : _v(data, ['aggregateDis']))),
-          Expanded(
-              flex: 2,
-              child: _Field('Currency',
-                  _v(data, ['currency']) == '-' ? 'INR' : _v(data, ['currency']))),
-          Expanded(
-            flex: 2,
+          // Ship To Party Section
+          const Text(
+            'Ship To Party',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Status', style: _labelStyle),
-                const SizedBox(height: 6),
-                _statusPill(status),
+                Text(
+                  shipToPartyName != '-' ? '$shipToPartyName - $shipToPartyCode' : shipToPartyCode,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _dark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildDetailRow('Customer Code', customerDetails?.customerCode ?? shipToPartyCode),
+                _buildDetailRow('Address', customerDetails?.address ?? '-'),
+                _buildDetailRow('PAN No', customerDetails?.panNo ?? '-'),
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          // Shipping Location Section
+          const Text(
+            'Shipping Location',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shippingLocation != '-' ? shippingLocation : '-',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _dark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (locationDetails != null) ...[
+                  _buildDetailRow('Address', locationDetails.addressLine1 ?? '-'),
+                  _buildDetailRow('City', locationDetails.city ?? '-'),
+                  _buildDetailRow('State', locationDetails.state ?? '-'),
+                  _buildDetailRow('Pin Code', locationDetails.pincode ?? '-'),
+                  _buildDetailRow('GST No', locationDetails.gstNo ?? '-'),
+                ] else ...[
+                  _buildDetailRow('Address', '-'),
+                  _buildDetailRow('City', '-'),
+                  _buildDetailRow('State', '-'),
+                  _buildDetailRow('Pin Code', '-'),
+                  _buildDetailRow('GST No', '-'),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _billingLocationHeading(
+    String fallbackCode,
+    CustomerLocationResponseModel? details,
+  ) {
+    final String city = details?.city?.trim() ?? '';
+    final String locationType = details?.locationType?.trim() ?? '';
+    final String apiCode = details?.locationCode?.trim() ?? '';
+    final String code = apiCode.isNotEmpty
+        ? apiCode
+        : (fallbackCode != '-' ? fallbackCode.trim() : '');
+
+    final String typeAndCode = locationType.isNotEmpty
+        ? (code.isNotEmpty ? '$locationType($code)' : locationType)
+        : code;
+
+    final String heading = [city, typeAndCode]
+        .where((part) => part.isNotEmpty)
+        .join(' - ');
+    return heading.isEmpty ? '-' : heading;
+  }
+
+  String _locationAddress(CustomerLocationResponseModel? details) {
+    if (details == null) return '-';
+    final List<String> parts = [
+      if (details.addressLine1?.trim().isNotEmpty ?? false)
+        details.addressLine1!.trim(),
+      if (details.addressLine2?.trim().isNotEmpty ?? false)
+        details.addressLine2!.trim(),
+    ];
+    return parts.isEmpty ? '-' : parts.join(', ');
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontSize: 12,
+                color: _label,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                color: _dark,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdditionalDetailsSection(Map<String, dynamic> data) {
+    final viewModel = Provider.of<OrderManagementViewModel>(context, listen: false);
+    final mdoMaster = viewModel.singleMdoMaster;
+
+    // Use MDO master data if available, otherwise fall back to data
+    final String customerRef = mdoMaster?.customerReference ?? _v(data, ['customerReference']);
+    final String customerRefDate = mdoMaster?.customerReferenceDate ?? _v(data, ['customerRefDate']);
+    final String currency = mdoMaster?.currency ?? _v(data, ['currency']);
+    final String paymentTerms = mdoMaster?.paymentTerms ?? _v(data, ['paymentTerms']);
+    final String orderValidTill = mdoMaster?.orderValidTillDate ?? _v(data, ['orderValidTill']);
+    final String requiredDeliveryStartDate = mdoMaster?.requiredDeliveryStartdate ?? _v(data, ['requiredDeliveryStartDate']);
+    final bool? isTolerance = mdoMaster?.isTolerance;
+
+    return _sectionShell(
+      sectionKey: 'additional',
+      icon: Icons.note_add_outlined,
+      title: 'Additional Details',
+      child: Column(
+        children: [
+          _gridRow([
+            _Field('Customer Ref', customerRef),
+            _Field('Customer Ref Date', _formatDate(customerRefDate)),
+            _Field('Currency', currency == '-' ? 'INR' : currency),
+            _Field('Payment Terms', paymentTerms),
+          ]),
+          const SizedBox(height: 16),
+          _gridRow([
+            _Field('Order Valid Till', _formatDate(orderValidTill)),
+            _Field('Required Delivery Start Date', _formatDate(requiredDeliveryStartDate)),
+            _Field('Is Tolerance', isTolerance == true ? 'Yes' : (isTolerance == false ? 'No' : '-')),
+            const SizedBox(),
+          ]),
         ],
       ),
     );
@@ -751,28 +1017,48 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
   }
 
   Widget _buildDeliveryOrderSection(Map<String, dynamic> data) {
-    final List deliveryOrders = data['deliveryOrders'] as List? ?? [];
+    final viewModel = Provider.of<OrderManagementViewModel>(context, listen: false);
+    // Only SOs have an MDO master; avoid reusing the previous SO's data on STO.
+    final mdoMaster = widget.isSO ? viewModel.singleMdoMaster : null;
+
+    // Get CDO list from MDO master
+    List<Map<String, dynamic>> cdoList = [];
+
+    if (mdoMaster != null && mdoMaster.mdoDetails != null) {
+      for (final mdoDetail in mdoMaster.mdoDetails!) {
+        if (mdoDetail.cdOs != null) {
+          for (final cdo in mdoDetail.cdOs!) {
+            cdoList.add({
+              'cdo': cdo,
+              'materialCode': mdoDetail.materialCode,
+              'materialName': mdoDetail.productName,
+              'uom': mdoDetail.productUOM,
+            });
+          }
+        }
+      }
+    }
+
+    // Fallback to deliveryOrders from data if no CDO data
+    if (cdoList.isEmpty) {
+      final List deliveryOrders = data['deliveryOrders'] as List? ?? [];
+      cdoList = deliveryOrders.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
 
     return _sectionShell(
       sectionKey: 'delivery',
       icon: Icons.local_shipping_outlined,
       title: 'Delivery Order',
-      child: deliveryOrders.isEmpty
+      child: cdoList.isEmpty
           ? _emptyBox(Icons.local_shipping_outlined, 'No delivery orders found.')
-          : _buildDeliveryOrderTable(deliveryOrders),
+          : _buildDeliveryOrderTable(cdoList),
     );
   }
 
-  Widget _buildDeliveryOrderTable(List deliveryOrders) {
-    final rows = deliveryOrders
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-
+  Widget _buildDeliveryOrderTable(List<Map<String, dynamic>> deliveryOrders) {
     const headerStyle = TextStyle(
         fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF34495E));
     const cellStyle = TextStyle(fontSize: 12, color: _dark);
-
-    String qty(dynamic v) => _fmtNum(v);
 
     return Container(
       decoration: BoxDecoration(
@@ -804,30 +1090,648 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
             DataColumn(label: Text('Created Date')),
           ],
           rows: [
-            for (final r in rows)
+            for (final r in deliveryOrders)
               DataRow(cells: [
-                DataCell(Text(
-                  _v(r, ['doNumber']),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0878B8),
-                    decoration: TextDecoration.underline,
+                DataCell(InkWell(
+                  onTap: () => _showViewDeliveryOrderDialog(r),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      _getCdoValue(r, 'cdoNumber'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0878B8),
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                   ),
                 )),
-                DataCell(Text(_v(r, ['bdoNumber']))),
-                DataCell(Text(_v(r, ['locationName']))),
-                DataCell(Text(_v(r, ['materialCode']))),
-                DataCell(Text(qty(r['quantity']))),
-                DataCell(Text(qty(
-                    r['allocatedQuantity'] ?? r['allocated'] ?? r['dispatchQuantity']))),
-                DataCell(Text(qty(r['doBalanceQty']))),
-                DataCell(Text(_v(r, ['status']))),
-                DataCell(Text(_v(r, ['createdBy']))),
-                DataCell(Text(_formatDate(_v(r, ['createdDate'])))),
+                DataCell(Text(_getCdoValue(r, 'bdoNumber'))),
+                DataCell(Text(_getCdoValue(r, 'locationName'))),
+                DataCell(Text(_getMaterialCode(r))),
+                DataCell(Text(_getQtyWithUom(r, 'quantity'))),
+                DataCell(Text(_getQtyWithUom(r, 'allocatedQuantity'))),
+                DataCell(Text(_getQtyWithUom(r, 'doBalanceQty'))),
+                DataCell(Text(_getCdoValue(r, 'status'))),
+                DataCell(Text(_getCdoValue(r, 'createdBy'))),
+                DataCell(Text(_formatDate(_getCdoValue(r, 'createdDate')))),
               ]),
           ],
         ),
+      ),
+    );
+  }
+
+  String _getCdoValue(Map<String, dynamic> data, String key) {
+    final dynamic cdo = data['cdo'];
+    if (cdo is CdoMaster) {
+      final dynamic value = switch (key) {
+        'cdoNumber' => cdo.cdoNumber,
+        'bdoNumber' => cdo.bdoNumber,
+        'locationName' => cdo.locationName,
+        'materialCode' => cdo.materialCode,
+        'status' => cdo.status,
+        'createdBy' => cdo.createdBy,
+        'createdDate' => cdo.createdDate,
+        _ => null,
+      };
+      return value?.toString() ?? '-';
+    }
+    if (cdo is Map) {
+      return cdo[key]?.toString() ?? '-';
+    }
+    // Fallback to direct data (legacy map uses doNumber, not cdoNumber)
+    if (key == 'cdoNumber') {
+      return _v(data, ['doNumber', 'cdoNumber']);
+    }
+    return _v(data, [key]);
+  }
+
+  String _getMaterialCode(Map<String, dynamic> data) {
+    // Get material code from MDO detail if available
+    final materialCode = data['materialCode']?.toString();
+    if (materialCode != null && materialCode.isNotEmpty) {
+      return materialCode;
+    }
+    // Fallback to CDO object
+    return _getCdoValue(data, 'materialCode');
+  }
+
+  String _getQtyWithUom(Map<String, dynamic> data, String key) {
+    final dynamic cdo = data['cdo'];
+    dynamic value;
+
+    if (cdo is CdoMaster) {
+      value = switch (key) {
+        'quantity' => cdo.quantity,
+        'allocatedQuantity' => cdo.allocatedQuantity ?? cdo.dispatchQuantity,
+        'doBalanceQty' => cdo.doBalanceQty,
+        'dispatchQuantity' => cdo.dispatchQuantity,
+        _ => null,
+      };
+    } else if (cdo is Map) {
+      value = cdo[key];
+    } else {
+      value = data[key];
+    }
+
+    final uom = data['uom']?.toString() ?? 'MTS';
+
+    if (value == null) return '-';
+    final qty = _fmtNum(value);
+    return '$qty $uom';
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  String _rawCdoValue(Map<String, dynamic> row, String key) {
+    final dynamic cdo = row['cdo'];
+    if (cdo is Map) {
+      final dynamic value = cdo[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString().trim();
+      }
+    }
+    final dynamic value = row[key];
+    if (value == null) return '';
+    final String text = value.toString().trim();
+    return text == 'null' ? '' : text;
+  }
+
+  dynamic _firstRouteStep(Map<String, dynamic> row) {
+    final dynamic cdo = row['cdo'];
+    final dynamic raw = cdo is Map
+        ? cdo['cdoDeliveryRouteSteps']
+        : (cdo == null ? row['cdoDeliveryRouteSteps'] : null);
+    if (raw is List && raw.isNotEmpty) return raw.first;
+    return null;
+  }
+
+
+  String _deliveryStateName(int? stateCode, String? shippingLocationCode) {
+    final viewModel =
+        Provider.of<OrderManagementViewModel>(context, listen: false);
+    final location = viewModel.customerLocationFor(shippingLocationCode);
+
+    if (stateCode != null) {
+      if (location != null &&
+          location.stateCode?.trim() == stateCode.toString() &&
+          (location.state?.trim().isNotEmpty ?? false)) {
+        return location.state!.trim();
+      }
+      return stateCode.toString();
+    }
+
+
+    if (location != null && (location.state?.trim().isNotEmpty ?? false)) {
+      return location.state!.trim();
+    }
+    return '-';
+  }
+
+  void _showViewDeliveryOrderDialog(Map<String, dynamic> row) {
+    final dynamic cdo = row['cdo'];
+    final CdoMaster? master = cdo is CdoMaster ? cdo : null;
+
+    final String materialCode = _getMaterialCode(row);
+    final String materialDescription =
+        (row['materialName']?.toString().trim().isNotEmpty ?? false)
+            ? row['materialName'].toString().trim()
+            : (master?.materialName?.trim().isNotEmpty == true
+                ? master!.materialName!.trim()
+                : _rawCdoValue(row, 'materialName'));
+
+    final double? quantity = master?.quantity ??
+        _parseDouble(cdo is Map ? cdo['quantity'] : row['quantity']);
+    final String uom = (row['uom']?.toString().trim().isNotEmpty ?? false)
+        ? row['uom'].toString().trim()
+        : 'MTS';
+
+    final String locationName = master?.locationName?.trim().isNotEmpty == true
+        ? master!.locationName!.trim()
+        : _rawCdoValue(row, 'locationName');
+    final String priority = master?.priority?.trim().isNotEmpty == true
+        ? master!.priority!.trim()
+        : _rawCdoValue(row, 'priority');
+    final bool isMultiModel = master?.isMultiVehicle ??
+        (cdo is Map
+            ? cdo['isMultiVehicle'] == true
+            : row['isMultiVehicle'] == true);
+
+    final List<String> publishOptions = <String>[];
+    final List<PublishRule> rules =
+        master?.publishRule ?? const <PublishRule>[];
+    if (rules.isNotEmpty) {
+      for (final rule in rules) {
+        final label = (rule.name ?? rule.code ?? rule.type ?? '').trim();
+        if (label.isNotEmpty && !publishOptions.contains(label)) {
+          publishOptions.add(label);
+        }
+      }
+    } else {
+      final dynamic rawRules =
+          cdo is Map ? cdo['publishRule'] : row['publishRule'];
+      if (rawRules is List) {
+        for (final rule in rawRules) {
+          final label = rule is Map
+              ? (rule['name'] ?? rule['code'] ?? rule['type'] ?? '')
+                  .toString()
+                  .trim()
+              : rule.toString().trim();
+          if (label.isNotEmpty && !publishOptions.contains(label)) {
+            publishOptions.add(label);
+          }
+        }
+      }
+    }
+
+    final dynamic rawStep = master?.cdoDeliveryRouteSteps?.isNotEmpty == true
+        ? master!.cdoDeliveryRouteSteps!.first
+        : _firstRouteStep(row);
+
+    String stepNo = '';
+    String mode = '';
+    String destination = '';
+    int? stateCode;
+    bool invoicing = false;
+
+    if (rawStep is CdoDeliveryRouteStep) {
+      stepNo = rawStep.deliveryStepNo?.toString() ?? '';
+      mode = rawStep.mode?.trim() ?? '';
+      destination = rawStep.destination?.trim() ?? '';
+      stateCode = rawStep.destinationStateCode;
+      invoicing = rawStep.invoiceGeneration ?? false;
+    } else if (rawStep is Map) {
+      stepNo = rawStep['deliveryStepNo']?.toString() ?? '';
+      mode = rawStep['mode']?.toString().trim() ?? '';
+      destination = rawStep['destination']?.toString().trim() ?? '';
+      stateCode = _parseInt(rawStep['destinationStateCode']);
+      invoicing = rawStep['invoiceGeneration'] == true;
+    }
+
+    final String state = _deliveryStateName(
+      stateCode,
+      widget.order?['shippingLocation']?.toString(),
+    );
+
+    // Billing location is resolved from the Customer Delivery Location API
+    // response that was cached while loading this order.
+    final String billingLocation =
+        widget.order?['billingLocation']?.toString().trim() ?? '-';
+
+    String? selectedPublish;
+    bool multiModel = isMultiModel;
+    bool invoice = invoicing;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'View Delivery Order',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: _dark,
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => Navigator.pop(dialogContext),
+                            borderRadius: BorderRadius.circular(20),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child:
+                                  Icon(Icons.close, size: 20, color: _label),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 22, color: Color(0xFFE9EDF2)),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final bool narrow = constraints.maxWidth < 520;
+                          const Widget gap = SizedBox(width: 18);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _dialogField(
+                                        'Material Code', materialCode),
+                                  ),
+                                  gap,
+                                  Expanded(
+                                    child: _dialogField(
+                                      'Material Description',
+                                      materialDescription.isEmpty
+                                          ? '-'
+                                          : materialDescription,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _dialogField(
+                                      'Quantity',
+                                      quantity == null
+                                          ? '-'
+                                          : _fmtNum(quantity),
+                                      trailing: Text(
+                                        uom,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: _label,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  gap,
+                                  Expanded(
+                                    child: _dialogField(
+                                      'Location Name',
+                                      locationName.isEmpty
+                                          ? '-'
+                                          : locationName,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _dialogField(
+                                      'Priority',
+                                      priority.isEmpty ? '-' : priority,
+                                    ),
+                                  ),
+                                  gap,
+                                  Expanded(
+                                    child: _dialogPublishField(
+                                      options: publishOptions,
+                                      selected: selectedPublish,
+                                      onChanged: (value) => setDialogState(
+                                        () => selectedPublish = value,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              _dialogCheck(
+                                label: 'Multi Model',
+                                value: multiModel,
+                                onChanged: (value) => setDialogState(
+                                  () => multiModel = value,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              if (narrow) ...[
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: _dialogField('Step', stepNo),
+                                    ),
+                                    gap,
+                                    Expanded(
+                                      child: _dialogField('Mode', mode),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: _dialogField(
+                                          'Destination', destination),
+                                    ),
+                                    gap,
+                                    Expanded(
+                                      child: _dialogField('State', state),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _dialogCheck(
+                                  label: 'Invoicing',
+                                  value: invoice,
+                                  onChanged: (value) => setDialogState(
+                                    () => invoice = value,
+                                  ),
+                                ),
+                              ] else
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _dialogField('Step', stepNo),
+                                    ),
+                                    gap,
+                                    Expanded(
+                                      flex: 2,
+                                      child: _dialogField('Mode', mode),
+                                    ),
+                                    gap,
+                                    Expanded(
+                                      flex: 5,
+                                      child: _dialogField(
+                                          'Destination', destination),
+                                    ),
+                                    gap,
+                                    Expanded(
+                                      flex: 5,
+                                      child: _dialogField('State', state),
+                                    ),
+                                    gap,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 18),
+                                      child: _dialogCheck(
+                                        label: 'Invoicing',
+                                        value: invoice,
+                                        onChanged: (value) => setDialogState(
+                                          () => invoice = value,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 18),
+                              const Divider(
+                                  height: 1, color: Color(0xFFE9EDF2)),
+                              const SizedBox(height: 14),
+                              Consumer<OrderManagementViewModel>(
+                                builder: (context, vm, child) {
+                                  final details =
+                                      vm.customerLocationFor(billingLocation);
+                                  final address = _locationAddress(details);
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _dialogField(
+                                        'Billing Location',
+                                        _billingLocationHeading(
+                                            billingLocation, details),
+                                      ),
+                                      if (address != '-') ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          address,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: _label,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _dialogField(String label, String value, {Widget? trailing}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: _label,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                value.isEmpty ? '-' : value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _dark,
+                  height: 1.3,
+                ),
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              trailing,
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _dialogPublishField({
+    required List<String> options,
+    required String? selected,
+    required ValueChanged<String?> onChanged,
+  }) {
+    const valueStyle = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: _dark,
+    );
+    const hintStyle = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: Color(0xFF98A2B3),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Publish To',
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: _label,
+          ),
+        ),
+        const SizedBox(height: 1),
+        if (options.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(child: Text('Select', style: hintStyle)),
+                Icon(Icons.keyboard_arrow_down,
+                    size: 18, color: Color(0xFF98A2B3)),
+              ],
+            ),
+          )
+        else
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selected,
+              isExpanded: true,
+              isDense: true,
+              hint: const Text('Select', style: hintStyle),
+              icon: const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: _label),
+              style: valueStyle,
+              items: options
+                  .map(
+                    (option) => DropdownMenuItem<String>(
+                      value: option,
+                      child: Text(
+                        option,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: valueStyle,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: onChanged,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _dialogCheck({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Checkbox(
+              value: value,
+              onChanged: (v) => onChanged(v ?? false),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              activeColor: _blue,
+              side: const BorderSide(color: Color(0xFF98A2B3), width: 1.3),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: _dark,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -69,6 +69,9 @@ class OrderManagementViewModel with ChangeNotifier {
   List<StoMaster> _stoList = [];
   List<PoMasterResponse> _purchaseOrderList = [];
 
+  MdoMaster? _singleMdoMaster;
+  MdoMaster? get singleMdoMaster => _singleMdoMaster;
+
 
   List<MilestonePlanResponseModel> get milestonePlanList => _milestonePlanList;
   List<BdoResponseModel> get bdoList => _bdoList;
@@ -104,6 +107,12 @@ class OrderManagementViewModel with ChangeNotifier {
   List<CustomerResponseModel> _customerList = [];
   List<CustomerResponseModel> get customerList => _customerList;
 
+  CustomerResponseModel? _soldToPartyCustomer;
+  CustomerResponseModel? get soldToPartyCustomer => _soldToPartyCustomer;
+
+  CustomerResponseModel? _shipToPartyCustomer;
+  CustomerResponseModel? get shipToPartyCustomer => _shipToPartyCustomer;
+
   List<DistributionChannelResponseModel> _distributionChannelList = [];
   List<DistributionChannelResponseModel> get distributionChannelList => _distributionChannelList;
 
@@ -130,6 +139,18 @@ class OrderManagementViewModel with ChangeNotifier {
 
   List<CustomerLocationResponseModel> _customerLocationList = [];
   List<CustomerLocationResponseModel> get customerLocationList => _customerLocationList;
+
+  final Map<String, CustomerLocationResponseModel> _customerLocationByCode = {};
+
+  /// Looks up a previously fetched location by its code (case-insensitive).
+  CustomerLocationResponseModel? customerLocationFor(String? locationCode) {
+    final key = locationCode?.trim();
+    if (key == null || key.isEmpty || key == '-') return null;
+    return _customerLocationByCode[key.toLowerCase()];
+  }
+
+  /// Drops cached locations before loading a different order's details.
+  void clearCustomerLocationCache() => _customerLocationByCode.clear();
 
   List<LocationResponseModel> _locationList = [];
   List<LocationResponseModel> get locationList => _locationList;
@@ -203,6 +224,47 @@ class OrderManagementViewModel with ChangeNotifier {
     } finally {
       isLoading = false;
       isPaginating = false;
+      safeNotifyListeners();
+    }
+  }
+
+  // --- Fetch Single MDO Master by MDO Number ---
+  Future<bool> fetchSingleMdoMaster(int mdoNumber, String tenantCode) async {
+    isLoading = true;
+    _errorMessage = null;
+    _singleMdoMaster = null;
+    safeNotifyListeners();
+
+    try {
+      final request = FilterMdoMasterRequest(
+        status: '',
+        tenantCode: tenantCode,
+        currentPage: 1,
+        rowSize: 1,
+        mdoNumber: mdoNumber,
+      );
+
+      debugPrint('Fetch Single MDO Payload: ${jsonEncode(request.toJson())}');
+
+      final response = await _apiService.postFilterMDOMasters(request);
+
+      if (response != null && response.statusCode == 200 && response.data != null) {
+        List<dynamic> data = response.data;
+        if (data.isNotEmpty) {
+          _singleMdoMaster = MdoMaster.fromJson(data.first);
+          return true;
+        }
+        return false;
+      } else {
+        throw Exception("Failed to fetch MDO Master details");
+      }
+    } catch (e) {
+      // Supplementary data for the details screen; a failure here must not
+      // replace the whole screen with the global error state.
+      debugPrint('Fetch Single MDO Error: $e');
+      return false;
+    } finally {
+      isLoading = false;
       safeNotifyListeners();
     }
   }
@@ -948,6 +1010,69 @@ class OrderManagementViewModel with ChangeNotifier {
     }
   }
 
+
+  Future<bool> fetchCustomerByCode(String customerCode, {bool isSoldToParty = true}) async {
+    final String code = customerCode.trim();
+    if (code.isEmpty) return false;
+
+
+    if (isSoldToParty) {
+      _soldToPartyCustomer = null;
+    } else {
+      _shipToPartyCustomer = null;
+    }
+    safeNotifyListeners();
+
+    try {
+      final request = CustomerRequestModel(customerCode: code);
+      debugPrint('Fetch Customer Payload: ${jsonEncode(request.toJson())}');
+
+      final response = await _apiService.postFilterCustomers(request);
+
+      if (response != null && response.statusCode == 200 && response.data != null) {
+        dynamic data = response.data;
+        List<dynamic> listToParse = data is List ? data : [data];
+
+        final customers = listToParse
+            .whereType<Map>()
+            .map((json) => CustomerResponseModel.fromJson(
+                  Map<String, dynamic>.from(json),
+                ))
+            .toList();
+
+        if (customers.isEmpty) return false;
+        CustomerResponseModel? customer;
+        for (final c in customers) {
+          if ((c.customerCode ?? '').trim().toLowerCase() == code.toLowerCase()) {
+            customer = c;
+            break;
+          }
+        }
+        customer ??= customers.length == 1 ? customers.first : null;
+
+        if (customer == null) {
+          debugPrint('Fetch Customer: no match for code $code '
+              '(${customers.length} rows returned)');
+          return false;
+        }
+
+        if (isSoldToParty) {
+          _soldToPartyCustomer = customer;
+        } else {
+          _shipToPartyCustomer = customer;
+        }
+        return true;
+      } else {
+        throw Exception("Failed to fetch customer details");
+      }
+    } catch (e) {
+      debugPrint('Fetch Customer Error: $e');
+      return false;
+    } finally {
+      safeNotifyListeners();
+    }
+  }
+
   // --- 5. Get Paginated Distribution Channel List ---
   Future<bool> getPaginatedDistributionChannelList(int dcId) async {
     isLoading = true;
@@ -1230,11 +1355,29 @@ class OrderManagementViewModel with ChangeNotifier {
 
       if (response != null && response.statusCode == 200 && response.data != null) {
         dynamic data = response.data;
+        // Some gateways wrap single-record responses as { "data": {...} }.
+        if (data is Map && data['data'] != null) {
+          data = data['data'];
+        }
         List<dynamic> listToParse = data is List ? data : [data];
 
         _customerLocationList = listToParse
             .map((json) => CustomerLocationResponseModel.fromJson(json))
             .toList();
+
+        for (final location in _customerLocationList) {
+          final key = location.locationCode?.trim().toLowerCase();
+          if (key != null && key.isNotEmpty) {
+            _customerLocationByCode[key] = location;
+          }
+        }
+        // Some responses omit locationCode; when the API returned a single
+        // row for the requested code we can still cache it against that code.
+        if (_customerLocationList.length == 1 &&
+            (_customerLocationList.first.locationCode?.trim().isEmpty ?? true)) {
+          _customerLocationByCode[locationCode.trim().toLowerCase()] =
+              _customerLocationList.first;
+        }
 
         return true;
       } else {

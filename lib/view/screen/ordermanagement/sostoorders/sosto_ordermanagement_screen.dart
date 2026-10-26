@@ -235,7 +235,7 @@ class _SostoOrdermanagementScreenState
 
         if (searchQuery.isNotEmpty) {
           switch (_appliedFilter) {
-            case 'stoNumber':
+            case 'STO Number':
               stoNumber = int.tryParse(searchQuery) ?? 0;
               break;
 
@@ -245,7 +245,7 @@ class _SostoOrdermanagementScreenState
             case 'Order Type':
               orderType = searchQuery;
               break;
-            case 'Sender Plant Name':
+            case 'Sender Plant':
               senderPlantName = searchQuery;
               break;
             default:
@@ -604,11 +604,13 @@ class _SoCard extends StatelessWidget {
       'contractValidTo': order.contractValidTillDate ?? '-',
       'senderPlant': order.senderPlant ?? '_',
       'senderPlantName': order.senderPlantName ?? '_',
-      'soldToParty': order.soldToPartyName ?? '-',
-      'shipToParty': order.shipToPartyName ?? '-',
+      'mdoNumber': order.mdoNumber?.toString() ?? '',
+      'soldToParty': order.soldToParty ?? '-',
+      'soldToPartyName': order.soldToPartyName ?? '-',
+      'shipToParty': order.shipToParty ?? '-',
+      'shipToPartyName': order.shipToPartyName ?? '-',
       'customerReference': order.customerReference ?? '-',
       'customerRefDate': order.customerReferenceDate ?? '-',
-      'shipToPartyName': order.shipToParty ?? '-',
       'shippingLocation': order.shippingLocation ?? '-',
       'billingLocation': order.billingLocation ??'-',
       'orderValidTill': order.orderValidTillDate ?? '-',

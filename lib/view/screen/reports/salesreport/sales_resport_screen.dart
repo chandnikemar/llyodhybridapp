@@ -26,14 +26,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   String _tenantCode = '';
   SalesReportTab _selectedTab = SalesReportTab.doWise;
   bool _isLoadingMore = false;
-
-  // What the user picked in the filter popup. Dates default to today.
   String? _appliedFilter;
   late DateTime _appliedFromDate;
   late DateTime _appliedToDate;
-
-  // What the CURRENT list was fetched with. Load-more always reuses these,
-  // so pages never mix different searches.
   String? _committedFilter;
   String _committedQuery = '';
 
@@ -75,7 +70,6 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     }
   }
 
-  // Tolerant to case / spacing differences in the popup's labels
   String? _getApiFilterKey(String? filterName) {
     switch (filterName?.trim().toLowerCase()) {
       case 'so number':
@@ -189,8 +183,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     if (mounted) _fillViewport();
   }
 
-  /// If the loaded cards don't fill the screen there is nothing to scroll,
-  /// so keep loading the next 15 until it scrolls or the data ends.
+
   void _fillViewport() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scrollController.hasClients) return;
@@ -201,9 +194,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Tabs / filter dialog
-  // ---------------------------------------------------------------------------
+
   void _onTabChanged(SalesReportTab tab) {
     if (tab == _selectedTab) return;
     setState(() {
@@ -283,9 +274,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // UI
-  // ---------------------------------------------------------------------------
+
   Widget _squareButton({required VoidCallback onTap, required Widget child}) {
     return InkWell(
       onTap: onTap,
@@ -388,38 +377,119 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
   Widget _buildOrdersList(ReportsViewModel vm) {
     final bool isDoTab = _selectedTab == SalesReportTab.doWise;
-    final int itemCount = isDoTab ? vm.doList.length : vm.soscpoList.length;
 
+    // Copy the lists to avoid modifying the ViewModel's original lists.
+    final List<SalesReportResponse> doOrders =
+    List<SalesReportResponse>.of(vm.doList);
+
+    final List<SalesSOSCPOResponse> otherOrders =
+    List<SalesSOSCPOResponse>.of(vm.soscpoList);
+
+
+    doOrders.sort((a, b) {
+      final dateA = _parseReportDate(a.poDate?.toString());
+      final dateB = _parseReportDate(b.poDate?.toString());
+
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return 1;
+      if (dateB == null) return -1;
+
+      return dateB.compareTo(dateA);
+    });
+
+    otherOrders.sort((a, b) {
+      final dateA =
+      _parseReportDate(a.salesContractDate?.toString());
+      final dateB =
+      _parseReportDate(b.salesContractDate?.toString());
+
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return 1;
+      if (dateB == null) return -1;
+
+      return dateB.compareTo(dateA);
+    });
+    final int itemCount =
+    isDoTab ? doOrders.length : otherOrders.length;
+
+    // Initial loading state
     if (vm.isLoading && itemCount == 0) {
       return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF1C6DD0)));
+        child: CircularProgressIndicator(
+          color: Color(0xFF1C6DD0),
+        ),
+      );
     }
-    if (itemCount == 0) return _buildEmptyState();
 
+    // Empty state
+    if (itemCount == 0) {
+      return _buildEmptyState();
+    }
+
+    // Orders list
     return ListView.separated(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 4,
+      ),
       itemCount: itemCount + (vm.isPaginating ? 1 : 0),
-      separatorBuilder: (_, __) =>
-      const Divider(height: 24, color: Color(0xFFE1E3E8)),
+      separatorBuilder: (_, __) => const Divider(
+        height: 12,
+        color: Color(0xFFE1E3E8),
+      ),
       itemBuilder: (context, index) {
+        // Pagination loading indicator
         if (index == itemCount) {
           return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.symmetric(vertical: 12),
             child: Center(
-                child: CircularProgressIndicator(color: Color(0xFF1C6DD0))),
+              child: CircularProgressIndicator(
+                color: Color(0xFF1C6DD0),
+              ),
+            ),
           );
         }
-        return isDoTab
-            ? _OrderCard.fromDoWise(
-            order: vm.doList[index], tabType: _selectedTab)
-            : _OrderCard.fromOtherWise(
-            order: vm.soscpoList[index], tabType: _selectedTab);
+
+        // DO Wise cards
+        if (isDoTab) {
+          return _OrderCard.fromDoWise(
+            order: doOrders[index],
+            tabType: _selectedTab,
+          );
+        }
+
+        // SO Wise, SC Wise, and Customer PO Wise cards
+        return _OrderCard.fromOtherWise(
+          order: otherOrders[index],
+          tabType: _selectedTab,
+        );
       },
     );
   }
+  DateTime? _parseReportDate(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
 
+    final date = value.trim();
+
+    final parsed = DateTime.tryParse(date);
+    if (parsed != null) return parsed;
+
+    final match = RegExp(
+      r'^(\d{2})[/-](\d{2})[/-](\d{4})$',
+    ).firstMatch(date);
+
+    if (match != null) {
+      return DateTime(
+        int.parse(match.group(3)!),
+        int.parse(match.group(2)!),
+        int.parse(match.group(1)!),
+      );
+    }
+
+    return null;
+  }
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<ReportsViewModel>.value(
@@ -490,9 +560,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   }
 }
 
-// ============================================================================
-// ORDER CARD (unchanged)
-// ============================================================================
+
 class _OrderCard extends StatelessWidget {
   final SalesReportTab tabType;
 
@@ -505,7 +573,6 @@ class _OrderCard extends StatelessWidget {
   final String? customerName;
   final String? materialName;
   final String? rightAlignedTitle;
-
   final double? qty1;
   final double? qty2;
   final double? dispatchedQty;
@@ -514,13 +581,14 @@ class _OrderCard extends StatelessWidget {
   final String? poDate;
   final String? publishedOn;
 
+
   _OrderCard.fromDoWise({
     required SalesReportResponse order,
     required this.tabType,
-  })  : primaryTitle = 'SO',
-        primaryValue = order.soNumber?.toString() ?? '-',
-        secondaryTitle = 'DO',
-        secondaryValue = order.cdoNumber ?? '-',
+  })  : primaryTitle = 'DO',
+        primaryValue = order.cdoNumber?.toString() ?? '-',
+        secondaryTitle = 'SO',
+        secondaryValue = order.soNumber?.toString() ?? '-',
         status = order.status,
         customerName = order.customerName,
         rightAlignedTitle = order.customerReference,
@@ -602,36 +670,69 @@ class _OrderCard extends StatelessWidget {
         const SizedBox(height: 4),
         CommonText.caption('$secondaryTitle: $secondaryValue',
             color: const Color(0xFF777777)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+        const SizedBox(height: 6),
+
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               flex: 3,
-              child: CommonText.h4(
-                customerName ?? '-',
-                fontWeight: FontWeight.w600,
-                color: AppColors.kTextGreyLight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CommonText.caption(
+                    'Customer Name',
+                    fontSize: 10,
+                    color: const Color(0xFF777777),
+                  ),
+                  const SizedBox(height: 2),
+                  CommonText.h4(
+                    customerName ?? '-',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.kTextGreyLight,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               flex: 2,
-              child: CommonText.h4(
-                rightAlignedTitle ?? '-',
-                fontWeight: FontWeight.w600,
-                color: AppColors.kTextGreyLight,
-                textAlign: TextAlign.right,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  CommonText.caption(
+                    'Cust.Ref.',
+                    fontSize: 10,
+                    textAlign: TextAlign.right,
+                    color: const Color(0xFF777777),
+                  ),
+                  const SizedBox(height: 2),
+                  CommonText.h4(
+                    rightAlignedTitle ?? '-',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.kTextGreyLight,
+                    textAlign: TextAlign.right,
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        CommonText.caption(materialName ?? '-', color: const Color(0xFF777777)),
+
+        const SizedBox(height: 3),
+
+        CommonText.caption(
+          'Material: ${materialName ?? '-'}',
+          fontSize: 11,
+          color: const Color(0xFF777777),
+        ),
         const SizedBox(height: 14),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
           decoration: BoxDecoration(
             color: const Color(0xFFF8F9FA),
             borderRadius: BorderRadius.circular(8),
@@ -683,12 +784,14 @@ class _OrderCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
+
         Row(
           children: [
             Expanded(
               child: CommonText.caption(
-                'Date: ${_formatDate(poDate)}',
+                'PO Date: ${_formatDate(poDate)}',
+                fontSize: 10,
                 color: const Color(0xFF777777),
               ),
             ),
@@ -696,6 +799,7 @@ class _OrderCard extends StatelessWidget {
               Expanded(
                 child: CommonText.caption(
                   'Published: $publishedOn',
+                  fontSize: 10,
                   textAlign: TextAlign.right,
                   color: const Color(0xFF777777),
                 ),
