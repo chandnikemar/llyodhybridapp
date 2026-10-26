@@ -610,6 +610,7 @@ class _SoCard extends StatelessWidget {
       'customerRefDate': order.customerReferenceDate ?? '-',
       'shipToPartyName': order.shipToParty ?? '-',
       'shippingLocation': order.shippingLocation ?? '-',
+      'billingLocation': order.billingLocation ??'-',
       'orderValidTill': order.orderValidTillDate ?? '-',
       'requiredDeliveryStartDate': order.requiredDeliveryStartdate ?? '-',
       'paymentTerms': order.paymentTerms ?? '-',
@@ -999,16 +1000,12 @@ class _StoCard extends StatelessWidget {
   }
 }
 
-// ============================================================
-// SHARED WIDGETS
-// ============================================================
 
-/// Shows "Sold To" and "Ship To" in separate rows on SO cards.
 class _PartyInfoBox extends StatelessWidget {
   final String title;
   final String value;
 
-  const _PartyInfoBox({required this.title, required this.value});
+  const   _PartyInfoBox({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {

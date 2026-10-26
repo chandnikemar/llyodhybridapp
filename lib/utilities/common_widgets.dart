@@ -278,9 +278,6 @@ class _CommonSearchFilterRowState
     return Row(
       children: [
 
-        // ============================================================
-        // SEARCH FIELD
-        // ============================================================
         Expanded(
           child: Container(
             height: 42,
@@ -316,9 +313,6 @@ class _CommonSearchFilterRowState
                   ),
                 ),
 
-                // ====================================================
-                // CLEAR
-                // ====================================================
                 if (hasSearchText)
                   InkWell(
                     onTap: () {
@@ -346,9 +340,6 @@ class _CommonSearchFilterRowState
 
         const SizedBox(width: 8),
 
-        // ============================================================
-        // SEARCH BUTTON
-        // ============================================================
         InkWell(
           onTap: widget.onSearch,
           borderRadius: BorderRadius.circular(6),

@@ -92,7 +92,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         if (savedTenantCode != null && savedTenantCode.isNotEmpty) {
           try {
             defaultTenant = tenants.firstWhere((t) =>
-            (t['tenantCode'] ?? '').toString().trim().toUpperCase() == savedTenantCode.trim().toUpperCase()
+            (t['tenantCode'] ?? '').toString().trim().toUpperCase() ==
+                savedTenantCode.trim().toUpperCase()
             );
           } catch (_) {}
         }
@@ -120,7 +121,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
         // Ensure the pref is up to date with initial selection
         if (_selectedTenant != null) {
-          await prefs.setString(Common.selectedTenant, _selectedTenant!['tenantCode']);
+          await prefs.setString(
+              Common.selectedTenant, _selectedTenant!['tenantCode']);
         }
       } catch (e) {
         debugPrint("Error parsing tenants: $e");
@@ -157,7 +159,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
 
       String parentKey = CommonConfig.allowedMenus.keys.firstWhere(
-            (key) => key.toLowerCase() == parent.displayName.trim().toLowerCase(),
+            (key) =>
+        key.toLowerCase() == parent.displayName.trim().toLowerCase(),
         orElse: () => '',
       );
 
@@ -224,7 +227,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   IconData _getIcon(String iconString) {
     if (iconString.contains('home')) return Icons.home_outlined;
-    if (iconString.contains('user') && !iconString.contains('users')) return Icons.person_outline;
+    if (iconString.contains('user') && !iconString.contains('users'))
+      return Icons.person_outline;
     if (iconString.contains('users')) return Icons.group_outlined;
     if (iconString.contains('chart')) return Icons.stacked_line_chart;
     if (iconString.contains('cog')) return Icons.settings_outlined;
@@ -288,7 +292,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case '/poItems':
         return const PurchaseOrdersScreen();
       case '/management-daily-dispatch':
-        return const MGMDailyDispatchReportScreen(title: 'MGM Daily Dispatch Report');
+        return const MGMDailyDispatchReportScreen(
+            title: 'MGM Daily Dispatch Report');
       case '/management-vtr-outbound':
         return const MGMVtrOutBoundListScreen(title: 'MGM Vtr - Outbound');
       case '/management-vtr-inbound':
@@ -340,7 +345,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         centerTitle: true,
         title: Text(
           _getPageTitle(),
-          style:TextStyle(
+          style: TextStyle(
             color: const Color(0xFF131754),
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -428,13 +433,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             const Divider(height: 1),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
                 children: [
 
                   // ==========================================
                   // 🔹 TENANT DROPDOWN (ONLY SHOWS IF NOT ON DASHBOARD) 🔹
                   // ==========================================
-                  if (_activeRoute != '/dashboards/dashboard1' && _activeRoute != '/profile')
+                  if (_activeRoute != '/dashboards/dashboard1' &&
+                      _activeRoute != '/profile')
                     _isLoadingTenants || _isSwitchingTenant
                         ? const Center(
                       child: Padding(
@@ -448,7 +455,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     )
                         : Container(
                       margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAF0FA),
                         borderRadius: BorderRadius.circular(8),
@@ -469,13 +477,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _selectedTenant?['tenantCode'],
-                                icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF131754)),
+                                icon: const Icon(Icons.arrow_drop_down,
+                                    color: Color(0xFF131754)),
                                 isExpanded: true,
                                 isDense: false,
                                 dropdownColor: Colors.white,
                                 onChanged: (String? newTenantCode) async {
-                                  if (newTenantCode != null && newTenantCode != _selectedTenant?['tenantCode']) {
-                                    print('🔑 [Drawer] Switching tenant from ${_selectedTenant?['tenantCode']} to $newTenantCode');
+                                  if (newTenantCode != null && newTenantCode !=
+                                      _selectedTenant?['tenantCode']) {
+                                    print(
+                                        '🔑 [Drawer] Switching tenant from ${_selectedTenant?['tenantCode']} to $newTenantCode');
 
                                     // Show loading state
                                     setState(() {
@@ -483,13 +494,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                     });
 
                                     // Call switchTenant API
-                                    final loginViewModel = Provider.of<LoginViewModel>(context, listen: false);
-                                    final success = await loginViewModel.switchTenant(newTenantCode);
+                                    final loginViewModel = Provider.of<
+                                        LoginViewModel>(context, listen: false);
+                                    final success = await loginViewModel
+                                        .switchTenant(newTenantCode);
 
                                     if (success) {
                                       // Update selected tenant and reload data
                                       setState(() {
-                                        _selectedTenant = _tenants.firstWhere((t) => t['tenantCode'] == newTenantCode);
+                                        _selectedTenant =
+                                            _tenants.firstWhere((t) =>
+                                            t['tenantCode'] == newTenantCode);
                                         _isSwitchingTenant = false;
                                       });
 
@@ -503,7 +518,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                       });
 
                                       Navigator.pop(context);
-                                      print('🔑 [Drawer] Tenant switched successfully to $newTenantCode');
+                                      print(
+                                          '🔑 [Drawer] Tenant switched successfully to $newTenantCode');
                                     } else {
                                       // Revert selection if switch fails
                                       setState(() {
@@ -511,18 +527,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                       });
 
                                       if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
                                           SnackBar(
-                                            content: Text(loginViewModel.errorMessage ?? 'Failed to switch tenant'),
+                                            content: Text(
+                                                loginViewModel.errorMessage ??
+                                                    'Failed to switch tenant'),
                                             backgroundColor: Colors.red,
                                           ),
                                         );
                                       }
-                                      print('🔑 [Drawer] Failed to switch tenant: ${loginViewModel.errorMessage}');
+                                      print(
+                                          '🔑 [Drawer] Failed to switch tenant: ${loginViewModel
+                                              .errorMessage}');
                                     }
                                   }
                                 },
-                                items: _tenants.map<DropdownMenuItem<String>>((Map<String, dynamic> tenant) {
+                                items: _tenants.map<DropdownMenuItem<String>>((
+                                    Map<String, dynamic> tenant) {
                                   return DropdownMenuItem<String>(
                                     value: tenant['tenantCode'],
                                     child: Text(
@@ -547,10 +569,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ..._menuItems.map((menu) => _buildMenuNode(menu)),
                   const SizedBox(height: 20),
                   ListTile(
-                    leading: const Icon(Icons.person_outline, color: Colors.black87),
+                    leading: const Icon(
+                        Icons.person_outline, color: Colors.black87),
                     title: Text(
                       'My profile',
-                      style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w500, fontSize: 15),
                     ),
                     onTap: () {
                       setState(() {
@@ -571,7 +595,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildMenuNode(MenuModel menu) {
     bool hasChildren = menu.children.isNotEmpty;
-    bool isActive = _activeRoute == menu.routingURL && menu.routingURL.isNotEmpty;
+    bool isActive = _activeRoute == menu.routingURL &&
+        menu.routingURL.isNotEmpty;
     bool isAnyChildActive = hasChildren &&
         menu.children.any((child) =>
         _activeRoute == child.routingURL && child.routingURL.isNotEmpty);
@@ -598,7 +623,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               padding: EdgeInsets.only(left: isActive ? 6.0 : 0.0),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFFF0F4F8) : Colors.transparent,
+                  color: isActive ? const Color(0xFFF0F4F8) : Colors
+                      .transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: ListTile(
@@ -611,7 +637,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     menu.displayName,
                     style: TextStyle(
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                      color: isActive ? const Color(0xFF131754) : Colors.black87,
+                      color: isActive ? const Color(0xFF131754) : Colors
+                          .black87,
                       fontSize: 15,
                     ),
                   ),
@@ -663,30 +690,39 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 padding: EdgeInsets.only(left: isAnyChildActive ? 6.0 : 0.0),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isAnyChildActive ? const Color(0xFFF0F4F8) : Colors.transparent,
+                    color: isAnyChildActive ? const Color(0xFFF0F4F8) : Colors
+                        .transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 12.0),
                     child: Row(
                       children: [
                         Icon(
                           _getIcon(menu.menuIcon),
-                          color: isAnyChildActive ? const Color(0xFF1C6DD0) : Colors.black87,
+                          color: isAnyChildActive
+                              ? const Color(0xFF1C6DD0)
+                              : Colors.black87,
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
                             menu.displayName,
                             style: TextStyle(
-                                fontWeight: isAnyChildActive ? FontWeight.w600 : FontWeight.w500,
+                                fontWeight: isAnyChildActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
                                 fontSize: 15,
-                                color: isAnyChildActive ? const Color(0xFF131754) : Colors.black87),
+                                color: isAnyChildActive ? const Color(
+                                    0xFF131754) : Colors.black87),
                           ),
                         ),
                         Icon(
                           Icons.expand_more,
-                          color: isAnyChildActive ? const Color(0xFF1C6DD0) : Colors.black87,
+                          color: isAnyChildActive
+                              ? const Color(0xFF1C6DD0)
+                              : Colors.black87,
                         ),
                       ],
                     ),
@@ -698,7 +734,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           childrenPadding: const EdgeInsets.only(left: 54, bottom: 10),
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
           children: menu.children.map((child) {
-            bool isChildActive = _activeRoute == child.routingURL && child.routingURL.isNotEmpty;
+            bool isChildActive = _activeRoute == child.routingURL &&
+                child.routingURL.isNotEmpty;
             return InkWell(
               onTap: () {
                 setState(() {
@@ -714,8 +751,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   child.displayName,
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: isChildActive ? FontWeight.w600 : FontWeight.w400,
-                    color: isChildActive ? const Color(0xFF1C6DD0) : Colors.grey.shade700,
+                    fontWeight: isChildActive ? FontWeight.w600 : FontWeight
+                        .w400,
+                    color: isChildActive ? const Color(0xFF1C6DD0) : Colors.grey
+                        .shade700,
                   ),
                 ),
               ),
@@ -726,63 +765,84 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
+
   Widget _buildBottomNavigationBar() {
     return Container(
-      padding: const EdgeInsets.only(top: 10, bottom: 20),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          )
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          //_buildBottomNavItem(icon: Icons.home_outlined, label: 'Home', index: 0),
-          _buildBottomNavItem(icon: Icons.search, label: 'Search', index: 2),
-          _buildBottomNavItem(icon: Icons.menu, label: 'Menu', index: 3),
+          _buildBottomNavItem(
+            icon: Icons.search,
+            label: 'Search',
+            index: 2,
+          ),
+          _buildBottomNavItem(
+            icon: Icons.menu,
+            label: 'Menu',
+            index: 3,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomNavItem({required IconData icon, required String label, required int index}) {
-    bool isSelected = _currentIndex == index;
-    Color activeColor = const Color(0xFF1C6DD0);
-    Color inactiveColor = Colors.grey.shade600;
+  Widget _buildBottomNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final bool isSelected = _currentIndex == index;
+
+    const Color activeColor = Color(0xFF1C6DD0);
+    final Color inactiveColor = Colors.grey.shade600;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _onBottomNavTapped(index),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 1,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  color: isSelected ? activeColor.withOpacity(0.1) : Colors.transparent,
+                  color: isSelected
+                      ? activeColor.withOpacity(0.1)
+                      : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
                   color: isSelected ? activeColor : inactiveColor,
-                  size: 26,
+                  size: 18,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 1),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 9,
+                  height: 1.0,
+                  fontWeight: isSelected
+                      ? FontWeight.w600
+                      : FontWeight.w500,
                   color: isSelected ? activeColor : inactiveColor,
                 ),
               ),

@@ -8,8 +8,17 @@ import '../../../utilities/common.dart';
 
 class SiteSelectorRow extends StatefulWidget {
   final ValueChanged<String> onSiteChanged;
+  final VoidCallback? onSearchPressed;
+  final VoidCallback? onMenuPressed;
+  final Function(String)? onNavigate;
 
-  const SiteSelectorRow({super.key, required this.onSiteChanged});
+  const SiteSelectorRow({
+    super.key,
+    required this.onSiteChanged,
+    this.onSearchPressed,
+    this.onMenuPressed,
+    this.onNavigate,
+  });
 
   @override
   State<SiteSelectorRow> createState() => _SiteSelectorRowState();
@@ -101,6 +110,7 @@ class _SiteSelectorRowState extends State<SiteSelectorRow> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Tenant Dropdown
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
@@ -167,16 +177,41 @@ class _SiteSelectorRowState extends State<SiteSelectorRow> {
             ],
           ),
         ),
-        Container(
-          width: 120,
-          height: 40,
-          padding: const EdgeInsets.all(4),
-          child: Image.asset(
-            'assets/images/lloyds_logo.png',
-            height: 24,
-            fit: BoxFit.contain,
-          ),
-        ),
+
+        // // Search and Menu Icons
+        // Row(
+        //   children: [
+        //     // Search Icon
+        //     Container(
+        //       width: 36,
+        //       height: 36,
+        //       decoration: BoxDecoration(
+        //         color: const Color(0xFFEAF0FA),
+        //         borderRadius: BorderRadius.circular(10),
+        //       ),
+        //       child: IconButton(
+        //         icon: const Icon(Icons.search, size: 18, color: Color(0xFF131754)),
+        //         onPressed: widget.onSearchPressed,
+        //         padding: EdgeInsets.zero,
+        //       ),
+        //     ),
+        //     const SizedBox(width: 8),
+        //     // Menu Icon
+        //     Container(
+        //       width: 36,
+        //       height: 36,
+        //       decoration: BoxDecoration(
+        //         color: const Color(0xFFEAF0FA),
+        //         borderRadius: BorderRadius.circular(10),
+        //       ),
+        //       child: IconButton(
+        //         icon: const Icon(Icons.menu, size: 18, color: Color(0xFF131754)),
+        //         onPressed: widget.onMenuPressed,
+        //         padding: EdgeInsets.zero,
+        //       ),
+        //     ),
+        //   ],
+        // ),
       ],
     );
   }

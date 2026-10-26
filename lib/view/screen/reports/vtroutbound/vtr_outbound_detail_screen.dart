@@ -164,9 +164,9 @@ class VtrOutboundDetailScreen extends StatelessWidget {
                 children: [
                   _buildDetailRow(
                       'GW/TW/NW',
-                      '${transaction.grossWeight ?? '-'}/${transaction.tareWeight ?? '-'}/${transaction.netWeight ?? '-'}T'
+                      '${transaction.grossWeight ?? '-'}/${transaction.tareWeight ?? '-'}/${transaction.netWeight ?? '-'}'
                   ),
-                  _buildDetailRow('Material rate', '₹ ${transaction.productRate ?? '-'}/T'),
+                  _buildDetailRow('Material rate', '₹ ${transaction.productRate ?? '-'}'),
                   _buildDetailRow('Material amt', _formatCurrency(transaction.materialAmount)),
                   _buildDetailRow(
                       'GW / TW time',

@@ -449,15 +449,16 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
         children: [
           _gridRow([
             _Field('Sold to Party', _v(data, ['soldToParty'])),
-            _Field('Ship To Party', _v(data, ['shipToParty'])),
-            _Field('Customer Reference', _v(data, ['customerReference'])),
-          ]),
-          const SizedBox(height: 16),
-          _gridRow([
-            _Field('Customer Ref Date',
-                _formatDate(_v(data, ['customerRefDate']))),
-            _Field('Order Valid Till',
-                _formatDate(_v(data, ['orderValidTill']))),
+            _Field('Billing Location', _v(data, ['billingLocation'])),
+          //   _Field('Ship To Party', _v(data, ['shipToParty'])),
+          //   _Field('Customer Reference', _v(data, ['customerReference'])),
+          // ]),
+          // const SizedBox(height: 16),
+          // _gridRow([
+          //   _Field('Customer Ref Date',
+          //       _formatDate(_v(data, ['customerRefDate']))),
+          //   _Field('Order Valid Till',
+          //       _formatDate(_v(data, ['orderValidTill']))),
             const SizedBox(),
           ]),
         ],
@@ -472,9 +473,9 @@ class _SostoOrderDetailsScreenState extends State<SostoOrderDetailsScreen> {
       title: 'Shipping Details',
       child: _gridRow([
         _Field('Shipping Point', _v(data, ['shipToPartyName'])),
-        _Field('Shipping Location', _v(data, ['shippingLocation'])),
-        _Field('Required Delivery Start Date',
-            _formatDate(_v(data, ['requiredDeliveryStartDate']))),
+        _Field('Shipping Location', _v(data, ['shipToParty'])),
+        // _Field('Required Delivery Start Date',
+        //     _formatDate(_v(data, ['requiredDeliveryStartDate']))),
       ]),
     );
   }
